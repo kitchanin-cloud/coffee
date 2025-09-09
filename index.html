@@ -406,7 +406,7 @@
         });
     </script>
         
-        <!-- 强制GIF动画播放的JavaScript - 优化版 -->
+        <!-- 强制GIF动画播放的JavaScript - 直接更新背景版 -->
         <script>
             // 检测是否为移动设备
             const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
@@ -416,6 +416,7 @@
                 // 确保隐藏的GIF辅助元素存在
                 let gifHelper = document.getElementById('gifHelper');
                 let isRefreshing = false; // 防止重复刷新
+                const body = document.body;
                 
                 // 如果辅助元素不存在，则创建它
                 if (!gifHelper) {
@@ -426,7 +427,7 @@
                     document.body.appendChild(gifHelper);
                 }
                 
-                // 克隆GIF元素并替换，强制重新加载和动画
+                // 直接更新body的背景图片，强制GIF动画播放
                 function refreshGIF() {
                     // 防止重复刷新导致的闪屏
                     if (isRefreshing) return;
@@ -440,31 +441,29 @@
                         // 使用Image对象预加载GIF，避免直接替换导致的闪烁
                         const tempImg = new Image();
                         tempImg.onload = function() {
-                            // 预加载完成后再替换元素
+                            // 直接更新body的背景图片
+                            body.style.backgroundImage = `url('${gifSrc}')`;
+                            
+                            // 同时更新隐藏的辅助元素
                             const newGif = document.createElement('img');
                             newGif.id = 'gifHelper';
                             newGif.src = gifSrc;
                             newGif.className = 'gif-animation-helper';
                             
-                            // 替换隐藏的辅助元素
                             if (gifHelper && gifHelper.parentNode) {
                                 gifHelper.parentNode.replaceChild(newGif, gifHelper);
                                 gifHelper = newGif;
                             }
                             
-                            // 对于移动设备，我们需要额外的措施来确保GIF正常播放
-                            if (isMobile) {
-                                // 使用requestAnimationFrame触发浏览器重绘
+                            // 使用requestAnimationFrame触发浏览器重绘（对所有设备都有效）
+                            requestAnimationFrame(function() {
+                                // 轻微改变body样式以触发重绘
+                                const originalOpacity = body.style.opacity;
+                                body.style.opacity = '0.999';
                                 requestAnimationFrame(function() {
-                                    // 轻微改变body样式以触发重绘
-                                    const body = document.body;
-                                    const originalOpacity = body.style.opacity;
-                                    body.style.opacity = '0.999';
-                                    requestAnimationFrame(function() {
-                                        body.style.opacity = originalOpacity;
-                                    });
+                                    body.style.opacity = originalOpacity;
                                 });
-                            }
+                            });
                             
                             // 允许下一次刷新
                             setTimeout(function() {
@@ -480,54 +479,45 @@
                     }
                 }
                 
-                // 初始加载后延迟刷新，让页面完全渲染
-                setTimeout(refreshGIF, 2000);
-                
-                // 根据设备类型设置不同的交互事件处理
-                if (isMobile) {
-                    // 移动端：减少事件类型，避免过度刷新
-                    const mobileEvents = ['touchstart', 'touchmove'];
-                    mobileEvents.forEach(event => {
-                        document.addEventListener(event, function debouncedRefresh() {
-                            refreshGIF();
-                            // 防止事件过于频繁触发
-                            document.removeEventListener(event, debouncedRefresh, { passive: true });
-                            setTimeout(() => {
-                                document.addEventListener(event, debouncedRefresh, { passive: true });
-                            }, 3000); // 移动端交互后3秒内不重复刷新
-                        }, { passive: true });
-                    });
-                    
-                    // 移动端：更频繁地自动刷新，但使用更长的间隔
-                    setInterval(refreshGIF, 15000); // 每15秒刷新一次
-                } else {
-                    // PC端：更少的事件和更低的刷新频率
-                    const pcEvents = ['mousemove'];
-                    pcEvents.forEach(event => {
-                        document.addEventListener(event, function debouncedRefresh() {
-                            // PC端只有在长时间不活动后才刷新
-                            const lastRefresh = window.lastGifRefresh || 0;
-                            if (Date.now() - lastRefresh > 30000) {
-                                refreshGIF();
-                                window.lastGifRefresh = Date.now();
-                            }
-                            
-                            document.removeEventListener(event, debouncedRefresh);
-                            setTimeout(() => {
-                                document.addEventListener(event, debouncedRefresh);
-                            }, 5000);
-                        });
-                    });
-                    
-                    // PC端：更低频率的自动刷新
-                    setInterval(function() {
-                        const lastRefresh = window.lastGifRefresh || 0;
-                        if (Date.now() - lastRefresh > 45000) {
-                            refreshGIF();
-                            window.lastGifRefresh = Date.now();
-                        }
-                    }, 30000); // 每30秒检查一次
+                // 对于移动端，我们需要更激进的刷新策略
+                function enhancedMobileRefresh() {
+                    if (isMobile) {
+                        // 连续刷新两次，确保动画正常启动
+                        refreshGIF();
+                        setTimeout(refreshGIF, 500);
+                    }
                 }
+                
+                // 初始加载后立即刷新
+                setTimeout(enhancedMobileRefresh, 1000);
+                
+                // 增加更多的用户交互事件触发刷新
+                const interactionEvents = ['touchstart', 'touchmove', 'touchend', 'scroll', 'click', 'mousemove'];
+                interactionEvents.forEach(event => {
+                    document.addEventListener(event, function debouncedRefresh() {
+                        // 对于移动端使用增强版刷新，PC端使用普通刷新
+                        if (isMobile) {
+                            enhancedMobileRefresh();
+                        } else {
+                            refreshGIF();
+                        }
+                        
+                        // 防止事件过于频繁触发
+                        document.removeEventListener(event, debouncedRefresh, { passive: true });
+                        setTimeout(() => {
+                            document.addEventListener(event, debouncedRefresh, { passive: true });
+                        }, isMobile ? 2000 : 3000); // 移动端更短的防抖时间
+                    }, { passive: true });
+                });
+                
+                // 定期刷新GIF，确保持续动画
+                setInterval(function() {
+                    if (isMobile) {
+                        enhancedMobileRefresh(); // 移动端更激进的刷新
+                    } else {
+                        refreshGIF();
+                    }
+                }, isMobile ? 8000 : 15000); // 移动端更频繁的刷新间隔
             });
         </script>
     </body>
