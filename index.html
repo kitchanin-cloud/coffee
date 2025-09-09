@@ -422,50 +422,65 @@
                     document.body.appendChild(gifHelper);
                 }
                 
-                // 克隆GIF元素并替换，强制重新加载和动画
+                // 强制刷新并重启GIF动画
                 function refreshGIF() {
-                    if (gifHelper) {
-                        try {
-                            // 为图片URL添加时间戳，确保每次都重新加载
-                            const timestamp = new Date().getTime();
-                            const gifSrc = 'images/9.9.2.gif?' + timestamp;
-                            
-                            const newGif = document.createElement('img');
-                            newGif.id = 'gifHelper';
-                            newGif.src = gifSrc;
-                            newGif.className = 'gif-animation-helper';
-                            
-                            // 等待新GIF加载完成后再替换，避免闪烁
-                            newGif.onload = function() {
-                                if (gifHelper.parentNode) {
-                                    gifHelper.parentNode.replaceChild(newGif, gifHelper);
-                                    gifHelper = newGif;
-                                }
-                            };
-                        } catch (e) {
-                            console.log('GIF refresh error:', e);
-                        }
+                    try {
+                        // 为图片URL添加时间戳，确保每次都重新加载
+                        const timestamp = new Date().getTime();
+                        const gifSrc = 'images/9.9.2.gif?' + timestamp;
+                        
+                        // 直接更新body的背景图片，这是解决移动端GIF卡顿的关键
+                        document.body.style.backgroundImage = 'url(' + gifSrc + ')';
+                        
+                        // 同时更新隐藏的img元素
+                        const newGif = document.createElement('img');
+                        newGif.id = 'gifHelper';
+                        newGif.src = gifSrc;
+                        newGif.className = 'gif-animation-helper';
+                        
+                        // 等待新GIF加载完成后再替换，避免闪烁
+                        newGif.onload = function() {
+                            if (gifHelper && gifHelper.parentNode) {
+                                gifHelper.parentNode.replaceChild(newGif, gifHelper);
+                                gifHelper = newGif;
+                            }
+                        };
+                    } catch (e) {
+                        console.log('GIF refresh error:', e);
                     }
                 }
                 
-                // 初始加载后刷新一次
-                setTimeout(refreshGIF, 500);
+                // 初始加载后连续刷新多次，确保动画启动
+                setTimeout(function() {
+                    refreshGIF();
+                    // 连续刷新3次，每次间隔100毫秒
+                    setTimeout(refreshGIF, 100);
+                    setTimeout(refreshGIF, 200);
+                    setTimeout(refreshGIF, 300);
+                }, 300);
                 
                 // 添加更多的用户交互事件，确保GIF在任何操作后都会刷新
                 const interactionEvents = ['touchstart', 'touchmove', 'touchend', 'scroll', 'click', 'mousemove'];
                 interactionEvents.forEach(event => {
                     document.addEventListener(event, function debouncedRefresh() {
+                        // 用户交互时连续刷新GIF
                         refreshGIF();
+                        setTimeout(refreshGIF, 100); // 交互后100ms再刷新一次
+                        
                         // 防止事件过于频繁触发
                         document.removeEventListener(event, debouncedRefresh, { passive: true });
                         setTimeout(() => {
                             document.addEventListener(event, debouncedRefresh, { passive: true });
-                        }, 2000);
+                        }, 1000); // 缩短防抖时间，提高响应速度
                     }, { passive: true });
                 });
                 
                 // 更频繁地定期刷新GIF，确保持续动画
-                setInterval(refreshGIF, 10000); // 每10秒刷新一次
+                setInterval(function() {
+                    // 定期刷新时连续刷新2次
+                    refreshGIF();
+                    setTimeout(refreshGIF, 100);
+                }, 5000); // 每5秒刷新一次，进一步提高频率
             });
         </script>
     </body>
