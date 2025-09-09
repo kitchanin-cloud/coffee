@@ -169,17 +169,17 @@
                 font-size: 0.9em;
             }
             
-            /* 确保每个语言和国旗组合作为一个整体显示，并精确对齐 */
+            /* 确保每个语言和国旗组合作为一个整体显示，并正确排列 */
             h1 > span {
                 display: flex !important;
                 align-items: center !important;
-                justify-content: center !important;
+                justify-content: flex-start !important;
                 white-space: nowrap;
-                gap: 8px;
+                gap: 5px;
                 margin: 0;
                 padding: 0;
                 width: 100%;
-                position: relative;
+                position: static;
             }
             
             /* 移除HTML中的空格影响 */
@@ -189,27 +189,33 @@
                 padding: 0 !important;
             }
             
-            /* 精确控制国旗容器，确保对齐 */
+            /* 国旗容器样式 - 放在文字前面 */
             .flag {
                 display: inline-flex !important;
                 align-items: center !important;
                 justify-content: center !important;
                 margin: 0 !important;
                 padding: 0 !important;
-                width: 25px !important;
+                width: 22px !important;
                 height: 14px !important;
                 flex-shrink: 0;
+                position: static;
             }
             
-            /* 确保国旗图片精确对齐 */
+            /* 国旗图片样式 */
             .flag img {
                 width: 22px !important;
                 height: 14px !important;
                 margin: 0 !important;
                 padding: 0 !important;
                 display: block !important;
-                position: absolute;
-                left: calc(50% - 13px);
+                position: static;
+            }
+            
+            /* 文字首字母居左对齐 */
+            .lang-en, .lang-th, .lang-zh {
+                text-align: left !important;
+                justify-content: flex-start !important;
             }
             
             /* 移动设备其他样式 */
