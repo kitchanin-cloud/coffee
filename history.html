@@ -142,58 +142,24 @@
                 padding: 10px;
             }
             
+            /* 优化移动端标题和国旗对齐样式 */
             header {
-                padding: 20px 15px;
-                margin-bottom: 20px;
-            }
-            
-            h1 {
-                font-size: 1.3em;
-                gap: 15px;
-            }
-            
-            .flag img {
-                width: 22px;
-                height: 14px;
-            }
-            
-            .container {
-                padding: 20px 15px;
-                width: 100%;
-                box-sizing: border-box;
-                overflow-x: auto; /* 允许水平滚动 */
-            }
-            
-            /* 让表格可以水平滚动 */
-            .table-container {
-                width: 100%;
-                overflow-x: auto;
-            }
-            
-            .history-table {
-                min-width: 400px; /* 减小表格最小宽度，让列更紧凑 */
-            }
-            
-            .history-table th, .history-table td {
-                padding: 8px 5px; /* 减少内边距，使列更紧凑 */
-                font-size: 12px;
-            }
-            
-            /* 确保移动端标题和国旗顶向最左边对齐 */
-            header {
-                padding: 15px 0 15px 10px; /* 左侧padding设为最小，确保国旗顶到最左边 */
-                margin: 5px;
+                padding: 15px 0 15px 5px; /* 左侧padding最小化，确保国旗顶到最左边 */
+                margin: 0;
                 text-align: left;
+                background-color: rgba(0, 0, 0, 0.6);
+                border-radius: 15px;
             }
             
             h1 {
                 font-size: 1.0em;
-                justify-content: flex-start;
+                justify-content: flex-start !important;
                 flex-direction: column;
                 white-space: normal;
-                gap: 10px;
+                gap: 8px;
                 margin: 0;
                 padding: 0;
+                text-align: left;
             }
             
             h1 .lang-en {
@@ -206,24 +172,48 @@
                 align-items: center;
                 justify-content: flex-start;
                 white-space: nowrap;
-                gap: 8px;
+                gap: 5px;
                 margin: 0;
                 padding: 0;
             }
             
-            /* 调整国旗与文字的间距，参考index页面 */
+            /* 调整国旗与文字的间距，确保正确对齐 */
             .flag {
                 display: inline-flex;
                 align-items: center;
-                margin-right: -3px;
                 margin: 0;
                 padding: 0;
             }
             
             .flag img {
-                margin-right: -1px;
-                margin: 0;
+                width: 22px;
+                height: 14px;
+                margin: 0 3px 0 0;
                 padding: 0;
+                vertical-align: middle;
+            }
+            
+            /* 移动设备其他样式 */
+            .container {
+                padding: 20px 15px;
+                width: 100%;
+                box-sizing: border-box;
+                overflow-x: auto;
+            }
+            
+            /* 让表格可以水平滚动 */
+            .table-container {
+                width: 100%;
+                overflow-x: auto;
+            }
+            
+            .history-table {
+                min-width: 400px;
+            }
+            
+            .history-table th, .history-table td {
+                padding: 8px 5px;
+                font-size: 12px;
             }
             
             .history-table thead th {
