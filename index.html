@@ -168,6 +168,10 @@
         
         /* --- 响应式设计：移动设备 --- */
         @media (max-width: 768px) {
+            /* 修复移动设备背景gif不动的问题 */
+            body {
+                background-attachment: scroll !important;
+            }
             header {
                 padding: 20px 15px;
                 margin: 10px;
