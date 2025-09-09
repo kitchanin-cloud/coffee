@@ -15,45 +15,22 @@
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
             color: white;
             overflow-x: hidden;
-            margin: 0;
-            padding: 0;
-        }
-        
-        /* 背景层 - 用于显示GIF动画 */
-        .background-layer {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: -1;
-            background-image: url('images/9.9.1.gif');
+            /* 恢复原始的背景设置，使用scroll而不是fixed来避免移动浏览器优化问题 */
+            background-image: url('images/9.9.2.gif');
             background-position: center;
             background-repeat: no-repeat;
             background-size: cover;
-            /* 确保移动设备上GIF能正常动画 */
-            animation: playGIF 1ms infinite;
-            /* 防止移动浏览器优化 */
-            transform: translateZ(0);
-            backface-visibility: hidden;
-            perspective: 1000px;
+            background-attachment: scroll;
         }
         
-        @keyframes playGIF {
-            0% { opacity: 0.99; }
-            100% { opacity: 1; }
-        }
-        
-        /* 移动端特定优化 */
-        @media (max-width: 768px) {
-            .background-layer {
-                /* 确保在移动设备上不会被优化掉 */
-                -webkit-animation: playGIF 1ms infinite;
-                animation: playGIF 1ms infinite;
-                /* 针对iOS Safari的优化 */
-                -webkit-transform: translateZ(0);
-                transform: translateZ(0);
-            }
+        /* 添加一个隐藏的img标签用于JavaScript控制GIF动画 */
+        .gif-animation-helper {
+            position: absolute;
+            top: -1000px;
+            left: -1000px;
+            width: 1px;
+            height: 1px;
+            visibility: hidden;
         }
 
         header {
@@ -322,8 +299,8 @@
     </style>
 </head>
 <body>
-    <!-- 背景GIF层 -->
-    <div class="background-layer"></div>
+    <!-- 用于强制GIF动画播放的隐藏辅助元素 -->
+    <img src="images/9.9.2.gif" class="gif-animation-helper" id="gifHelper">
     
     <header>
         <h1>
@@ -428,6 +405,32 @@
             });
         });
     </script>
-</body>
+        
+        <!-- 强制GIF动画播放的JavaScript -->
+        <script>
+            // 当页面加载完成后
+            window.addEventListener('load', function() {
+                // 获取辅助GIF元素
+                const gifHelper = document.getElementById('gifHelper');
+                
+                // 克隆GIF元素并替换，强制重新加载和动画
+                function refreshGIF() {
+                    if (gifHelper) {
+                        const newGif = gifHelper.cloneNode(true);
+                        gifHelper.parentNode.replaceChild(newGif, gifHelper);
+                    }
+                }
+                
+                // 初始加载后刷新一次
+                refreshGIF();
+                
+                // 添加触摸事件监听器，当用户触摸屏幕时刷新GIF
+                document.addEventListener('touchstart', refreshGIF);
+                
+                // 定期刷新GIF，确保持续动画
+                setInterval(refreshGIF, 30000); // 每30秒刷新一次
+            });
+        </script>
+    </body>
 </html>
 
