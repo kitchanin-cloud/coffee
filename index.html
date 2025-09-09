@@ -15,12 +15,45 @@
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
             color: white;
             overflow-x: hidden;
-            /* 确保这里的路径 'images/R.gif' 是正确的 */
-            background-image: url('images/9.9.2.gif');
+            margin: 0;
+            padding: 0;
+        }
+        
+        /* 背景层 - 用于显示GIF动画 */
+        .background-layer {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background-image: url('images/9.9.1.gif');
             background-position: center;
             background-repeat: no-repeat;
             background-size: cover;
-            background-attachment: fixed;
+            /* 确保移动设备上GIF能正常动画 */
+            animation: playGIF 1ms infinite;
+            /* 防止移动浏览器优化 */
+            transform: translateZ(0);
+            backface-visibility: hidden;
+            perspective: 1000px;
+        }
+        
+        @keyframes playGIF {
+            0% { opacity: 0.99; }
+            100% { opacity: 1; }
+        }
+        
+        /* 移动端特定优化 */
+        @media (max-width: 768px) {
+            .background-layer {
+                /* 确保在移动设备上不会被优化掉 */
+                -webkit-animation: playGIF 1ms infinite;
+                animation: playGIF 1ms infinite;
+                /* 针对iOS Safari的优化 */
+                -webkit-transform: translateZ(0);
+                transform: translateZ(0);
+            }
         }
 
         header {
@@ -289,6 +322,9 @@
     </style>
 </head>
 <body>
+    <!-- 背景GIF层 -->
+    <div class="background-layer"></div>
+    
     <header>
         <h1>
             <span><span class="flag"><img src="images/flagUK.png" alt="UK Flag"></span> <span class="lang-en">Coffee Bean (Green Bean) Price</span></span>
