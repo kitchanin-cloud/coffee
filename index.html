@@ -5,16 +5,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>咖啡豆价格 - Coffee Bean Price</title>
     <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
         body {
             /* 1. 优化字体以更好地支持 Emoji 显示 */
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
-            margin: 0;
-            padding: 0;
             color: white;
             overflow-x: hidden;
             /* 确保这里的路径 'images/R.gif' 是正确的 */
-            background: url('images/9.9.2.gif') no-repeat center center fixed;
+            background: url('images/9.9.2.gif') no-repeat center center scroll;
             background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
         }
 
         header {
