@@ -169,15 +169,16 @@
                 font-size: 0.9em;
             }
             
-            /* 确保每个语言和国旗组合作为一个整体显示，并且国旗顶到最左边 */
+            /* 确保每个语言和国旗组合作为一个整体显示，并保持对齐 */
             h1 > span {
                 display: flex;
                 align-items: center;
-                justify-content: flex-start;
+                justify-content: center;
                 white-space: nowrap;
                 gap: 5px;
                 margin: 0;
                 padding: 0;
+                width: 100%;
             }
             
             /* 调整国旗与文字的间距，确保正确对齐 */
@@ -186,14 +187,17 @@
                 align-items: center;
                 margin: 0;
                 padding: 0;
+                min-width: 25px;
+                justify-content: flex-start;
             }
             
             .flag img {
                 width: 22px;
                 height: 14px;
-                margin: 0 3px 0 0;
+                margin: 0;
                 padding: 0;
                 vertical-align: middle;
+                display: block;
             }
             
             /* 移动设备其他样式 */
