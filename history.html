@@ -169,35 +169,47 @@
                 font-size: 0.9em;
             }
             
-            /* 确保每个语言和国旗组合作为一个整体显示，并保持对齐 */
+            /* 确保每个语言和国旗组合作为一个整体显示，并精确对齐 */
             h1 > span {
-                display: flex;
-                align-items: center;
-                justify-content: center;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
                 white-space: nowrap;
-                gap: 5px;
+                gap: 8px;
                 margin: 0;
                 padding: 0;
                 width: 100%;
+                position: relative;
             }
             
-            /* 调整国旗与文字的间距，确保正确对齐 */
+            /* 移除HTML中的空格影响 */
+            h1 > span > * {
+                display: inline-flex !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+            
+            /* 精确控制国旗容器，确保对齐 */
             .flag {
-                display: inline-flex;
-                align-items: center;
-                margin: 0;
-                padding: 0;
-                min-width: 25px;
-                justify-content: flex-start;
+                display: inline-flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                width: 25px !important;
+                height: 14px !important;
+                flex-shrink: 0;
             }
             
+            /* 确保国旗图片精确对齐 */
             .flag img {
-                width: 22px;
-                height: 14px;
-                margin: 0;
-                padding: 0;
-                vertical-align: middle;
-                display: block;
+                width: 22px !important;
+                height: 14px !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                display: block !important;
+                position: absolute;
+                left: calc(50% - 13px);
             }
             
             /* 移动设备其他样式 */
