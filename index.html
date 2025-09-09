@@ -410,25 +410,62 @@
         <script>
             // 当页面加载完成后
             window.addEventListener('load', function() {
-                // 获取辅助GIF元素
-                const gifHelper = document.getElementById('gifHelper');
+                // 确保隐藏的GIF辅助元素存在
+                let gifHelper = document.getElementById('gifHelper');
+                
+                // 如果辅助元素不存在，则创建它
+                if (!gifHelper) {
+                    gifHelper = document.createElement('img');
+                    gifHelper.id = 'gifHelper';
+                    gifHelper.src = 'images/9.9.2.gif';
+                    gifHelper.className = 'gif-animation-helper';
+                    document.body.appendChild(gifHelper);
+                }
                 
                 // 克隆GIF元素并替换，强制重新加载和动画
                 function refreshGIF() {
                     if (gifHelper) {
-                        const newGif = gifHelper.cloneNode(true);
-                        gifHelper.parentNode.replaceChild(newGif, gifHelper);
+                        try {
+                            // 为图片URL添加时间戳，确保每次都重新加载
+                            const timestamp = new Date().getTime();
+                            const gifSrc = 'images/9.9.2.gif?' + timestamp;
+                            
+                            const newGif = document.createElement('img');
+                            newGif.id = 'gifHelper';
+                            newGif.src = gifSrc;
+                            newGif.className = 'gif-animation-helper';
+                            
+                            // 等待新GIF加载完成后再替换，避免闪烁
+                            newGif.onload = function() {
+                                if (gifHelper.parentNode) {
+                                    gifHelper.parentNode.replaceChild(newGif, gifHelper);
+                                    gifHelper = newGif;
+                                }
+                            };
+                        } catch (e) {
+                            console.log('GIF refresh error:', e);
+                        }
                     }
                 }
                 
                 // 初始加载后刷新一次
-                refreshGIF();
+                setTimeout(refreshGIF, 500);
                 
-                // 添加触摸事件监听器，当用户触摸屏幕时刷新GIF
-                document.addEventListener('touchstart', refreshGIF);
+                // 添加更多的用户交互事件，确保GIF在任何操作后都会刷新
+                const interactionEvents = ['touchstart', 'touchmove', 'touchend', 'scroll', 'click', 'mousemove'];
+                interactionEvents.forEach(event => {
+                    document.addEventListener(event, function debouncedRefresh() {
+                        refreshGIF();
+                        // 防止事件过于频繁触发
+                        document.removeEventListener(event, debouncedRefresh, { passive: true });
+                        setTimeout(() => {
+                            document.addEventListener(event, debouncedRefresh, { passive: true });
+                        }, 2000);
+                    }, { passive: true });
+                });
                 
-                // 定期刷新GIF，确保持续动画
-                setInterval(refreshGIF, 30000); // 每30秒刷新一次
+                // 更频繁地定期刷新GIF，确保持续动画
+                setInterval(refreshGIF, 10000); // 每10秒刷新一次
             });
         </script>
     </body>
