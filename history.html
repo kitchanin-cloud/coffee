@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>价格历史 - Price History</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+            margin: 0;
+            padding: 20px; /* 为页面添加一些边距 */
+            color: white;
+            overflow-x: hidden;
+            /* 确保这里的路径 'images/R.gif' 是正确的 */
+            background: url('images/c01.jpg') no-repeat center center fixed;
+            background-size: cover;
+            min-height: 100vh;
+        }
+
+        header {
+            background-color: rgba(0, 0, 0, 0.6);
+            text-align: center;
+            padding: 30px 20px;
+            border-radius: 15px;
+            margin-bottom: 30px; /* 与下方内容隔开 */
+        }
+
+        h1 {
+            font-size: 1.8em;
+            letter-spacing: 2px;
+            font-weight: bold;
+            color: #FFDDC1;
+            text-shadow: 3px 3px 10px rgba(0, 0, 0, 0.7);
+            margin: 0;
+            line-height: 1.5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 25px; /* 修改点：增加三种文字之间的距离，不影响国旗与对应文字的间距 */
+        }
+        
+        /* 重要：以下两个margin-right设置是控制国旗与文字间距的关键 */
+        
+        
+        .flag {
+            display: inline-flex;
+            align-items: center;
+            margin-right: -7px; /* 进一步增加负边距，缩短国旗与文字间距 */
+        }
+        
+        .flag img {
+            width: 28px;
+            height: 18px;
+            object-fit: cover;
+            border-radius: 2px;
+            vertical-align: middle;
+            margin-right: -4px; /* 进一步增加负边距，缩短国旗图片与文字间距 */
+        }
+
+        .container {
+            background-color: rgba(0, 0, 0, 0.5);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+            max-width: 900px; /* 从 800px 增加到 900px，让表格更宽 */
+            margin: 0 auto; /* 水平居中 */
+            transition: transform 0.3s ease, box-shadow 0.3s ease; /* 添加过渡效果 */
+        }
+        
+        .container:hover {
+            transform: translateY(-5px); /* 悬浮时轻微上移 */
+            box-shadow: 0 12px 35px rgba(0, 0, 0, 0.5); /* 悬浮时阴影加深 */
+        }
+
+        .history-table {
+            width: 100%;
+            border-collapse: collapse; /* 合并边框 */
+            margin-bottom: 30px;
+        }
+
+        .history-table th, .history-table td {
+            padding: 15px;
+            text-align: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2); /* 行与行之间的分隔线 */
+        }
+
+        .history-table thead th {
+            color: #FFEB3B;
+            font-size: 1.2em;
+            font-weight: bold;
+            white-space: nowrap; /* 防止表头文字换行 */
+        }
+        
+        .history-table thead th span {
+            /* 移除了 display: block，让语言在同一行显示 */
+            line-height: 1.4;
+        }
+
+        .history-table tbody tr:last-child td {
+            border-bottom: none; /* 最后一行无下边框 */
+        }
+        
+        .history-table tbody td {
+            font-size: 1.1em;
+        }
+
+        .buttons {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .buttons button {
+            background-color: #FFEB3B;
+            color: #333;
+            padding: 15px 30px;
+            border: none;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            font-weight: bold;
+            line-height: 1.5;
+            font-size: 1em;
+        }
+        
+        .buttons button span {
+            display: block;
+        }
+
+        .buttons button:hover {
+            background-color: #FF9800;
+            transform: scale(1.05);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>
+            <span class="flag"><img src="images/flagUK.png" alt="英国国旗"></span><span class="lang-en">Price History</span>
+            <span class="flag"><img src="images/flagThailand.png" alt="泰国国旗"></span><span class="lang-th">ประวัติราคา</span>
+            <span class="flag"><img src="images/flagChina.png" alt="中国国旗"></span><span class="lang-zh">往日价格查询</span>
+        </h1>
+    </header>
+
+    <div class="container">
+        <table class="history-table">
+            <thead>
+                <tr>
+                    <th>
+                        <span class="lang-en">Date</span> / <span class="lang-th">วันที่</span> / <span class="lang-zh">日期</span>
+                    </th>
+                    <th>
+                        <span class="lang-en">Price</span> / <span class="lang-th">ราคา</span> / <span class="lang-zh">价格</span>
+                    </th>
+                </tr>
+            </thead>
+            <tbody id="history-data-body">
+                <!-- 历史数据将由 JS 动态插入这里 -->
+            </tbody>
+        </table>
+
+        <div class="buttons">
+            <button onclick="window.location.href='index.html'">
+                <span class="lang-en">Back to Home</span>
+                <span class="lang-th">กลับไปที่หน้าหลัก</span>
+                <span class="lang-zh">返回主页</span>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // 价格数据 (你的简易数据库)
+        // 确保这个数据列表与主页的一致
+        const priceData = [
+          { date: '2025-09-08', price: '320' },
+          { date: '2025-09-07', price: '318' },
+          { date: '2025-09-06', price: '322' },
+          { date: '2025-09-05', price: '315' },
+          { date: '2025-09-04', price: '319' },
+        ];
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const tableBody = document.getElementById('history-data-body');
+
+            if (priceData && priceData.length > 0) {
+                priceData.forEach(record => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${record.date}</td>
+                        <td>¥ ${record.price}</td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            } else {
+                const row = document.createElement('tr');
+                row.innerHTML = `<td colspan="2">No historical data available.</td>`;
+                tableBody.appendChild(row);
+            }
+        });
+    </script>
+</body>
+</html>
+

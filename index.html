@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>咖啡豆价格 - Coffee Bean Price</title>
+    <style>
+        body {
+            /* 1. 优化字体以更好地支持 Emoji 显示 */
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+            margin: 0;
+            padding: 0;
+            color: white;
+            overflow-x: hidden;
+            /* 确保这里的路径 'images/R.gif' 是正确的 */
+            background: url('images/9.9.2.gif') no-repeat center center fixed;
+            background-size: cover;
+        }
+
+        header {
+            background-color: rgba(0, 0, 0, 0.6);
+            text-align: center;
+            padding: 30px 20px;
+            border-radius: 15px; /* 与历史页统一的圆角 */
+            margin: 20px; /* 为头部也增加外边距，使其成为卡片 */
+        }
+
+        h1 {
+            font-size: 1.8em; /* 调整基础字体大小以适应多语言 */
+            letter-spacing: 2px; /* 稍微减小间距以容纳国旗 */
+            font-weight: bold;
+            color: #FFDDC1;
+            text-shadow: 3px 3px 10px rgba(0, 0, 0, 0.7);
+            margin: 0; /* 移除 h1 的默认边距 */
+            line-height: 1.5;
+            display: flex; /* 使用flex布局来对齐 */
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap; /* 允许换行 */
+            gap: 25px; /* 修改点：增加三种文字之间的距离，不影响国旗与对应文字的间距 */
+        }
+        
+        /* 以下两个margin-right设置是控制国旗与文字间距的关键 */
+        .flag {
+            display: inline-flex;
+            margin-right: -3px; /* 减小负边距，增加国旗与文字之间的距离 */
+        }
+        
+        .flag img {
+            width: 28px;
+            height: 18px;
+            object-fit: cover;
+            border-radius: 2px;
+            vertical-align: middle;
+            margin-right: -1px; /* 减小负边距，增加国旗图片与文字之间的距离 */
+        }
+
+        .container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: calc(60vh - 100px); /* 调整高度以适应屏幕 */
+            flex-direction: column;
+            padding: 0 20px 30px 20px; /* 调整内边距 */
+        }
+
+        .price-box {
+            background-color: rgba(0, 0, 0, 0.5);
+            border-radius: 15px; /* 更圆润的卡片 */
+            padding: 40px; /* 增加内边距 */
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4); /* 更柔和的阴影 */
+            text-align: center;
+            transition: transform 0.3s ease, box-shadow 0.3s ease; /* 添加过渡效果 */
+            min-width: 300px;
+        }
+
+        .price-box:hover {
+            transform: translateY(-5px); /* 悬浮时轻微上移 */
+            box-shadow: 0 12px 35px rgba(0, 0, 0, 0.5); /* 悬浮时阴影加深 */
+        }
+        
+        .price .price-label span {
+            display: block; /* 每个语言占一行 */
+            line-height: 1.6;
+            font-size: 1.5em; /* 放大字体 */
+            font-weight: bold; /* 加粗 */
+            text-shadow: 1px 1px 4px rgba(0,0,0,0.6); /* 增加文字阴影以突出 */
+        }
+        
+        /* 3. 统一语言文字长度的视觉效果 */
+        .price .price-label .price-lang-zh {
+            letter-spacing: 0.2em; /* 调整中文间距以拉长 */
+        }
+        .price .price-label .price-lang-th {
+            letter-spacing: 0.05em; /* 微调泰文间距 */
+        }
+
+        .price .price-value {
+            font-size: 50px;
+            font-weight: 700;
+            color: #FFEB3B;
+            text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.5);
+            margin-top: 15px;
+            display: block;
+        }
+
+        .buttons {
+            display: flex;
+            justify-content: center;
+            gap: 25px;
+            flex-wrap: wrap; 
+            margin-top: 40px; /* 增加与价格的间距 */
+        }
+
+        /* 2. 按钮样式恢复 */
+        .buttons button {
+            background-color: #FFEB3B;
+            color: #333;
+            padding: 15px 30px;
+            border: none;
+            cursor: pointer;
+            border-radius: 8px; /* 方形圆角按钮 */
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            font-weight: bold;
+            line-height: 1.5;
+            font-size: 0.8em;
+        }
+        
+        .buttons button span {
+            display: block;
+        }
+
+        .buttons button:hover {
+            background-color: #FF9800;
+            transform: scale(1.05);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        footer {
+            position: fixed;
+            bottom: 10px;
+            width: 100%;
+            text-align: center;
+            color: #FFDDC1;
+            font-size: 14px;
+        }
+        
+        /* --- 弹窗样式 --- */
+        .modal {
+            display: none; 
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.7); 
+            animation: fadeIn 0.3s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        .modal-content {
+            background-color: rgba(40, 40, 40, 0.9);
+            color: #FFDDC1;
+            margin: 15% auto;
+            padding: 25px;
+            border: 1px solid #FFEB3B;
+            width: 90%;
+            max-width: 400px;
+            border-radius: 15px; /* 弹窗也更圆润 */
+            text-align: left;
+            position: relative;
+            box-shadow: 0 5px 25px rgba(255, 235, 59, 0.2);
+            animation: slideIn 0.4s;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateY(-50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .modal-content h2 {
+            color: #FFEB3B;
+            border-bottom: 1px solid #FFEB3B;
+            padding-bottom: 10px;
+            line-height: 1.5;
+        }
+
+        .modal-content p {
+            line-height: 1.8;
+        }
+
+        .close-btn {
+            color: #aaa;
+            position: absolute;
+            top: 10px;
+            right: 20px;
+            font-size: 30px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .close-btn:hover {
+            color: #FF9800;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>
+            <span><span class="flag"><img src="images/flagUK.png" alt="UK Flag"></span> <span class="lang-en">Coffee Bean (Green Bean) Price</span></span>
+            <span><span class="flag"><img src="images/flagThailand.png" alt="Thailand Flag"></span> <span class="lang-th">ราคาเมล็ดกาแฟ (เมล็ดดิบ)</span></span>
+            <span><span class="flag"><img src="images/flagChina.png" alt="China Flag"></span> <span class="lang-zh">咖啡豆（生豆）价格</span></span>
+        </h1>
+    </header>
+    <div class="container">
+        <div class="price-box">
+            <div class="price">
+                <div class="price-label">
+                    <span class="price-lang-en">Today's Price</span>
+                    <span class="price-lang-th">ราคา วันนี้</span>
+                    <span class="price-lang-zh">今日价格</span>
+                </div>
+                <span class="price-value">¥320 / ตัน (吨)</span>
+            </div>
+            <div class="buttons">
+                <button onclick="window.location.href='history.html'">
+                    <span class="lang-en">Price History</span>
+                    <span class="lang-th">ประวัติราคา</span>
+                    <span class="lang-zh">查询往日价格</span>
+                </button>
+                <button id="contact-btn">
+                    <span class="lang-en">Contact Info</span>
+                    <span class="lang-th">ข้อมูลติดต่อ</span>
+                    <span class="lang-zh">联系信息</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="contact-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+            <h2>
+                <span class="lang-en">Contact Us</span>
+                <span class="lang-th">ติดต่อเรา</span>
+                <span class="lang-zh">联系我们</span>
+            </h2>
+            <p>
+                <strong>
+                    <span class="lang-en">Email:</span>
+                    <span class="lang-th">อีเมล:</span>
+                    <span class="lang-zh">邮箱：</span>
+                </strong> your-email@example.com
+            </p>
+            <p>
+                <strong>
+                    <span class="lang-en">Phone:</span>
+                    <span class="lang-th">โทรศัพท์:</span>
+                    <span class="lang-zh">电话：</span>
+                </strong> 138-0013-8000
+            </p>
+            <p>
+                <strong>
+                    <span class="lang-en">Address:</span>
+                    <span class="lang-th">ที่อยู่:</span>
+                    <span class="lang-zh">地址：</span>
+                </strong> 
+                <span class="lang-en">Some Coffee Exchange Center</span>
+                <span class="lang-th">ศูนย์แลกเปลี่ยนกาแฟ</span>
+                <span class="lang-zh">某某咖啡交易中心</span>
+            </p>
+        </div>
+    </div>
+
+    <footer>
+        <p>&copy; 2025 咖啡豆公司 - All Rights Reserved</p>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const contactBtn = document.getElementById('contact-btn');
+            const contactModal = document.getElementById('contact-modal');
+            const closeBtn = contactModal.querySelector('.close-btn');
+
+            contactBtn.addEventListener('click', () => {
+                contactModal.style.display = 'block';
+            });
+
+            closeBtn.addEventListener('click', () => {
+                contactModal.style.display = 'none';
+            });
+
+            window.addEventListener('click', (event) => {
+                if (event.target == contactModal) {
+                    contactModal.style.display = 'none';
+                }
+            });
+        });
+    </script>
+</body>
+</html>
+
