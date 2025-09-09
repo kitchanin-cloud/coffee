@@ -179,10 +179,10 @@
                 font-size: 12px;
             }
             
-            /* 确保移动端标题向左对齐，国旗和语言垂直堆叠显示 */
+            /* 确保移动端标题和国旗顶向最左边对齐 */
             header {
-                padding: 20px 15px;
-                margin: 10px;
+                padding: 15px 0 15px 10px; /* 左侧padding设为最小，确保国旗顶到最左边 */
+                margin: 5px;
                 text-align: left;
             }
             
@@ -191,28 +191,39 @@
                 justify-content: flex-start;
                 flex-direction: column;
                 white-space: normal;
-                gap: 12px;
+                gap: 10px;
+                margin: 0;
+                padding: 0;
             }
             
             h1 .lang-en {
                 font-size: 0.9em;
             }
             
-            /* 确保每个语言和国旗组合作为一个整体显示 */
+            /* 确保每个语言和国旗组合作为一个整体显示，并且国旗顶到最左边 */
             h1 > span {
                 display: flex;
                 align-items: center;
+                justify-content: flex-start;
                 white-space: nowrap;
-                gap: 10px;
+                gap: 8px;
+                margin: 0;
+                padding: 0;
             }
             
             /* 调整国旗与文字的间距，参考index页面 */
             .flag {
-                margin-right: 5px;
+                display: inline-flex;
+                align-items: center;
+                margin-right: -3px;
+                margin: 0;
+                padding: 0;
             }
             
             .flag img {
-                margin-right: 5px;
+                margin-right: -1px;
+                margin: 0;
+                padding: 0;
             }
             
             .history-table thead th {
