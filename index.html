@@ -16,7 +16,7 @@
             color: white;
             overflow-x: hidden;
             /* 恢复原始的背景设置，使用scroll而不是fixed来避免移动浏览器优化问题 */
-            background-image: url('images/9.9.2.gif');
+            background-image: url('images/9.9.1.gif');
             background-position: center;
             background-repeat: no-repeat;
             background-size: cover;
@@ -422,7 +422,7 @@
                 if (!gifHelper) {
                     gifHelper = document.createElement('img');
                     gifHelper.id = 'gifHelper';
-                    gifHelper.src = 'images/9.9.2.gif';
+                    gifHelper.src = 'images/9.9.1.gif';
                     gifHelper.className = 'gif-animation-helper';
                     document.body.appendChild(gifHelper);
                 }
@@ -436,7 +436,7 @@
                     try {
                         // 为图片URL添加时间戳，确保每次都重新加载
                         const timestamp = new Date().getTime();
-                        const gifSrc = 'images/9.9.2.gif?' + timestamp;
+                        const gifSrc = 'images/9.9.1.gif?' + timestamp;
                         
                         // 使用Image对象预加载GIF，避免直接替换导致的闪烁
                         const tempImg = new Image();
