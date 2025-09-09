@@ -170,12 +170,26 @@
             }
             
             .history-table {
-                min-width: 600px; /* 确保表格有足够的宽度 */
+                min-width: 400px; /* 减小表格最小宽度，让列更紧凑 */
             }
             
             .history-table th, .history-table td {
-                padding: 10px;
-                font-size: 14px;
+                padding: 8px 5px; /* 减少内边距，使列更紧凑 */
+                font-size: 12px;
+            }
+            
+            /* 确保移动端标题向左对齐，文字在一行内显示 */
+            header {
+                text-align: left;
+            }
+            
+            h1 {
+                justify-content: flex-start;
+                white-space: nowrap;
+            }
+            
+            h1 span {
+                display: inline-block;
             }
             
             .history-table thead th {
