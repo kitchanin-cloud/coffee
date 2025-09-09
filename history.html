@@ -134,6 +134,59 @@
             transform: scale(1.05);
             box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
         }
+
+        /* --- 响应式设计：移动设备 --- */
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+            
+            header {
+                padding: 20px 15px;
+                margin-bottom: 20px;
+            }
+            
+            h1 {
+                font-size: 1.3em;
+                gap: 15px;
+            }
+            
+            .flag img {
+                width: 22px;
+                height: 14px;
+            }
+            
+            .container {
+                padding: 20px 15px;
+                width: 100%;
+                box-sizing: border-box;
+                overflow-x: auto; /* 允许水平滚动 */
+            }
+            
+            /* 让表格可以水平滚动 */
+            .table-container {
+                width: 100%;
+                overflow-x: auto;
+            }
+            
+            .history-table {
+                min-width: 600px; /* 确保表格有足够的宽度 */
+            }
+            
+            .history-table th, .history-table td {
+                padding: 10px;
+                font-size: 14px;
+            }
+            
+            .history-table thead th {
+                font-size: 1em;
+            }
+            
+            .buttons button {
+                padding: 10px 20px;
+                font-size: 0.9em;
+            }
+        }
     </style>
 </head>
 <body>
@@ -146,21 +199,23 @@
     </header>
 
     <div class="container">
-        <table class="history-table">
-            <thead>
-                <tr>
-                    <th>
-                        <span class="lang-en">Date</span> / <span class="lang-th">วันที่</span> / <span class="lang-zh">日期</span>
-                    </th>
-                    <th>
-                        <span class="lang-en">Price</span> / <span class="lang-th">ราคา</span> / <span class="lang-zh">价格</span>
-                    </th>
-                </tr>
-            </thead>
-            <tbody id="history-data-body">
-                <!-- 历史数据将由 JS 动态插入这里 -->
-            </tbody>
-        </table>
+        <div class="table-container">
+            <table class="history-table">
+                <thead>
+                    <tr>
+                        <th>
+                            <span class="lang-en">Date</span> / <span class="lang-th">วันที่</span> / <span class="lang-zh">日期</span>
+                        </th>
+                        <th>
+                            <span class="lang-en">Price</span> / <span class="lang-th">ราคา</span> / <span class="lang-zh">价格</span>
+                        </th>
+                    </tr>
+                </thead>
+                <tbody id="history-data-body">
+                    <!-- 历史数据将由 JS 动态插入这里 -->
+                </tbody>
+            </table>
+        </div>
 
         <div class="buttons">
             <button onclick="window.location.href='index.html'">

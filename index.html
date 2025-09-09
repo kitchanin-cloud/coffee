@@ -159,6 +159,60 @@
             background-color: rgba(0,0,0,0.7); 
             animation: fadeIn 0.3s;
         }
+        
+        /* --- 响应式设计：移动设备 --- */
+        @media (max-width: 768px) {
+            header {
+                padding: 20px 15px;
+                margin: 10px;
+            }
+            
+            h1 {
+                font-size: 1.3em;
+                gap: 15px;
+            }
+            
+            .flag img {
+                width: 22px;
+                height: 14px;
+            }
+            
+            .container {
+                min-height: calc(60vh - 80px);
+                padding: 0 15px 20px 15px;
+            }
+            
+            .price-box {
+                padding: 30px 20px;
+                min-width: auto;
+                width: 100%;
+                box-sizing: border-box;
+            }
+            
+            .price .price-label span {
+                font-size: 1.2em;
+            }
+            
+            .price .price-value {
+                font-size: 35px;
+            }
+            
+            .buttons {
+                gap: 15px;
+                margin-top: 30px;
+            }
+            
+            .buttons button {
+                padding: 12px 20px;
+                font-size: 0.7em;
+            }
+            
+            .modal-content {
+                margin: 20% auto;
+                width: 95%;
+                padding: 20px;
+            }
+        }
 
         @keyframes fadeIn {
             from { opacity: 0; }
