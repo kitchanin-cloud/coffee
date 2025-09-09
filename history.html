@@ -171,16 +171,9 @@
         </div>
     </div>
 
-    <script>
-        // 价格数据 (你的简易数据库)
-        // 确保这个数据列表与主页的一致
-        const priceData = [
-          { date: '2025-09-08', price: '320' },
-          { date: '2025-09-07', price: '318' },
-          { date: '2025-09-06', price: '322' },
-          { date: '2025-09-05', price: '315' },
-          { date: '2025-09-04', price: '319' },
-        ];
+    <script type="module">
+        // 从数据文件导入价格数据
+        import { priceData } from './data.js';
 
         document.addEventListener('DOMContentLoaded', () => {
             const tableBody = document.getElementById('history-data-body');

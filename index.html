@@ -228,7 +228,7 @@
                     <span class="price-lang-th">ราคา วันนี้</span>
                     <span class="price-lang-zh">今日价格</span>
                 </div>
-                <span class="price-value">¥320 / ตัน (吨)</span>
+                <span class="price-value" id="current-price">¥320 / ตัน (吨)</span>
             </div>
             <div class="buttons">
                 <button onclick="window.location.href='history.html'">
@@ -284,8 +284,19 @@
         <p>&copy; 2025 咖啡豆公司 - All Rights Reserved</p>
     </footer>
 
-    <script>
+    <script type="module">
+        // 从数据文件导入价格数据
+        import { priceData } from './data.js';
+
         document.addEventListener('DOMContentLoaded', () => {
+            // 更新当前价格显示
+            const currentPriceElement = document.getElementById('current-price');
+            if (priceData && priceData.length > 0) {
+                // 假设数据是按日期降序排列的，取第一个元素作为最新价格
+                const latestPrice = priceData[0].price;
+                currentPriceElement.textContent = `¥${latestPrice} / ตัน (吨)`;
+            }
+
             const contactBtn = document.getElementById('contact-btn');
             const contactModal = document.getElementById('contact-modal');
             const closeBtn = contactModal.querySelector('.close-btn');
