@@ -136,6 +136,72 @@
             box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
         }
 
+        /* 分页控件样式 - 加强居中对齐 */
+        .pagination {
+            display: flex !important;
+            justify-content: center !important;
+            align-items: center !important;
+            margin: 30px auto !important;
+            gap: 15px;
+            max-width: 100%;
+        }
+
+        .pagination button {
+            background-color: #FFEB3B;
+            color: #333;
+            padding: 10px 20px;
+            border: none;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            font-weight: bold;
+            line-height: 1.5;
+            font-size: 1em;
+            display: flex;
+            flex-direction: row;
+            justify-content: center;
+            align-items: center;
+            min-height: 40px;
+        }
+
+        /* 为不同语言文本之间添加间距 */
+        .pagination button span:not(:last-child) {
+            margin-right: 8px;
+        }
+
+        .pagination button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .pagination button:hover:not(:disabled) {
+            background-color: #FF9800;
+            transform: scale(1.05);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .page-numbers {
+            display: flex;
+            gap: 10px;
+        }
+
+        .page-btn {
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 !important;
+        }
+
+        .page-btn.active {
+            background-color: #FF9800;
+            color: white;
+        }
+
         /* --- 响应式设计：移动设备 --- */
         @media (max-width: 768px) {
             body {
@@ -218,6 +284,23 @@
                 justify-content: flex-start !important;
             }
             
+            /* 分页按钮样式 - 修复上一页/下一页按钮歪斜问题 */
+            .pagination {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 10px;
+                margin-top: 20px;
+            }
+            
+            #prev-page, #next-page {
+                display: flex;
+                flex-direction: row;
+                align-items: center;
+                justify-content: center;
+                white-space: nowrap;
+            }
+            
             /* 移动设备其他样式 */
             .container {
                 padding: 20px 15px;
@@ -256,6 +339,35 @@
                 display: block;
                 text-align: center !important;
             }
+
+            /* 移动端分页样式调整 */
+            .pagination {
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                flex-wrap: wrap;
+                gap: 8px;
+                margin: 30px 0;
+            }
+
+            .pagination button {
+                padding: 8px 15px;
+                font-size: 0.9em;
+                min-height: 35px;
+            }
+
+            .page-btn {
+                width: 35px !important;
+                height: 35px !important;
+            }
+
+            /* 确保分页按钮里的文字在移动端正确显示 */
+            #prev-page span,
+            #next-page span {
+                display: block;
+                text-align: center !important;
+                font-size: 0.8em;
+            }
         }
     </style>
 </head>
@@ -287,6 +399,25 @@
             </table>
         </div>
 
+        <!-- 分页控件 -->
+        <div class="pagination">
+            <button id="prev-page" disabled>
+                <span class="lang-en">Previous</span>
+                <span class="lang-th">ก่อนหน้า</span>
+                <span class="lang-zh">上一页</span>
+            </button>
+            <div class="page-numbers">
+                <button class="page-btn active" data-page="1">1</button>
+                <button class="page-btn" data-page="2">2</button>
+                <button class="page-btn" data-page="3">3</button>
+            </div>
+            <button id="next-page">
+                <span class="lang-en">Next</span>
+                <span class="lang-th">ถัดไป</span>
+                <span class="lang-zh">下一页</span>
+            </button>
+        </div>
+
         <div class="buttons">
             <button onclick="window.location.href='index.html'">
                 <span class="lang-en">Back to Home</span>
@@ -302,21 +433,154 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             const tableBody = document.getElementById('history-data-body');
+            const prevBtn = document.getElementById('prev-page');
+            const nextBtn = document.getElementById('next-page');
+            const pageBtns = document.querySelectorAll('.page-btn');
+            const itemsPerPage = 10;
+            let currentPage = 1;
+            let totalPages = 3; // 初始值，将在获取数据后动态更新
 
-            if (priceData && priceData.length > 0) {
-                priceData.forEach(record => {
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td>${record.date}</td>
-                        <td>¥ ${record.price}</td>
-                    `;
-                    tableBody.appendChild(row);
-                });
-            } else {
-                const row = document.createElement('tr');
-                row.innerHTML = `<td colspan="2">No historical data available.</td>`;
-                tableBody.appendChild(row);
+            // 动态计算总页数
+            function calculateTotalPages(data) {
+                return Math.ceil(data.length / itemsPerPage);
             }
+
+            // 获取价格数据 - 结合localStorage中的最新数据和data.js中的历史数据
+            function getPriceData() {
+                try {
+                    // 首先获取data.js中的历史数据作为基础
+                    let allPriceData = JSON.parse(JSON.stringify(priceData));
+                    
+                    // 然后尝试从localStorage中获取最新数据
+                    const storedPriceData = JSON.parse(localStorage.getItem('priceData'));
+                    
+                    if (Array.isArray(storedPriceData) && storedPriceData.length > 0) {
+                        // 创建日期到价格的映射，以便快速更新或添加数据
+                        const priceMap = new Map();
+                        
+                        // 先将所有历史数据添加到映射中
+                        allPriceData.forEach(item => {
+                            priceMap.set(item.date, item);
+                        });
+                        
+                        // 然后添加或更新localStorage中的最新数据
+                        storedPriceData.forEach(item => {
+                            priceMap.set(item.date, item);
+                        });
+                        
+                        // 将映射转换回数组
+                        allPriceData = Array.from(priceMap.values());
+                    }
+                    
+                    // 确保数据按日期降序排列（最新的在前）
+                    allPriceData.sort((a, b) => new Date(b.date) - new Date(a.date));
+                    
+                    console.log('Total price records:', allPriceData.length);
+                    return allPriceData;
+                } catch (error) {
+                    console.error('Error getting price data:', error);
+                    // 出错时回退到使用data.js中的数据
+                    return [...priceData].sort((a, b) => new Date(b.date) - new Date(a.date));
+                }
+            }
+
+            // 渲染当前页的数据
+            function renderPage(page) {
+                tableBody.innerHTML = '';
+                
+                // 获取当前要使用的价格数据
+                const currentPriceData = getPriceData();
+                
+                // 动态更新总页数
+                totalPages = calculateTotalPages(currentPriceData);
+                
+                // 确保当前页码不超过总页数
+                if (page > totalPages && totalPages > 0) {
+                    page = totalPages;
+                    currentPage = page;
+                }
+                
+                // 计算当前页显示的数据范围
+                const startIndex = (page - 1) * itemsPerPage;
+                const endIndex = Math.min(startIndex + itemsPerPage, currentPriceData.length);
+                const pageData = currentPriceData.slice(startIndex, endIndex);
+
+                if (pageData && pageData.length > 0) {
+                    pageData.forEach(record => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${record.date}</td>
+                            <td>¥ ${record.price}</td>
+                        `;
+                        tableBody.appendChild(row);
+                    });
+                } else {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `<td colspan="2">No historical data available.</td>`;
+                    tableBody.appendChild(row);
+                }
+
+                // 更新分页按钮状态
+                updatePaginationButtons(page);
+            }
+
+            // 更新分页按钮状态
+            function updatePaginationButtons(page) {
+                // 更新当前页码高亮
+                pageBtns.forEach(btn => {
+                    const btnPage = parseInt(btn.dataset.page);
+                    btn.classList.remove('active');
+                    
+                    // 高亮当前页码
+                    if (btnPage === page) {
+                        btn.classList.add('active');
+                    }
+                    
+                    // 根据总页数显示或隐藏页码按钮
+                    if (btnPage > totalPages) {
+                        btn.style.display = 'none';
+                    } else {
+                        btn.style.display = 'inline-block';
+                    }
+                });
+
+                // 更新上一页/下一页按钮状态
+                prevBtn.disabled = page === 1;
+                nextBtn.disabled = page === totalPages;
+                
+                // 如果总页数为0或1，隐藏分页控件
+                const paginationContainer = document.querySelector('.pagination');
+                if (paginationContainer) {
+                    paginationContainer.style.display = totalPages > 1 ? 'block' : 'none';
+                }
+            }
+
+            // 初始化第一页
+            renderPage(1);
+
+            // 点击页码按钮
+            pageBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    currentPage = parseInt(btn.dataset.page);
+                    renderPage(currentPage);
+                });
+            });
+
+            // 上一页
+            prevBtn.addEventListener('click', () => {
+                if (currentPage > 1) {
+                    currentPage--;
+                    renderPage(currentPage);
+                }
+            });
+
+            // 下一页
+            nextBtn.addEventListener('click', () => {
+                if (currentPage < totalPages) {
+                    currentPage++;
+                    renderPage(currentPage);
+                }
+            });
         });
     </script>
 </body>

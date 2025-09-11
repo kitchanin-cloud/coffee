@@ -380,10 +380,38 @@
         document.addEventListener('DOMContentLoaded', () => {
             // 更新当前价格显示
             const currentPriceElement = document.getElementById('current-price');
-            if (priceData && priceData.length > 0) {
-                // 假设数据是按日期降序排列的，取第一个元素作为最新价格
-                const latestPrice = priceData[0].price;
-                currentPriceElement.textContent = `¥${latestPrice} / ตัน (吨)`;
+            
+            // 获取最新价格数据 - 添加错误处理和更健壮的数据获取逻辑
+            try {
+                // 首先尝试从localStorage中获取最新价格数据
+                let latestPrice = null;
+                
+                try {
+                    const storedPriceData = JSON.parse(localStorage.getItem('priceData'));
+                    
+                    if (Array.isArray(storedPriceData) && storedPriceData.length > 0) {
+                        // 确保数据按日期降序排列，然后获取最新价格
+                        storedPriceData.sort((a, b) => new Date(b.date) - new Date(a.date));
+                        latestPrice = storedPriceData[0].price;
+                    }
+                } catch (error) {
+                    console.error('Error parsing localStorage data:', error);
+                    // 如果解析localStorage数据出错，继续尝试使用data.js中的数据
+                }
+                
+                // 如果localStorage中没有有效的价格数据，则使用data.js中的数据
+                if (!latestPrice && Array.isArray(priceData) && priceData.length > 0) {
+                    // 确保数据按日期降序排列，然后获取最新价格
+                    const sortedPriceData = [...priceData].sort((a, b) => new Date(b.date) - new Date(a.date));
+                    latestPrice = sortedPriceData[0].price;
+                }
+                
+                // 显示最新价格
+                if (latestPrice) {
+                    currentPriceElement.textContent = `¥${latestPrice} / ตัน (吨)`;
+                }
+            } catch (error) {
+                console.error('Error updating current price:', error);
             }
 
             const contactBtn = document.getElementById('contact-btn');

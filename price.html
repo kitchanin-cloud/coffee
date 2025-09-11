@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>咖啡价格管理</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-image: url('images/c01.jpg?v=1');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            font-family: 'Arial', sans-serif;
+            color: #FFDDC1;
+            background-color: #1a1a1a;
+            line-height: 1.6;
+            position: relative;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* 覆盖背景图的黑色半透明遮罩 */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            z-index: -1;
+        }
+
+        /* 强制GIF动画播放的隐藏辅助元素 */
+        .gif-animation-helper {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        header {
+            background-color: rgba(40, 40, 40, 0.8);
+            backdrop-filter: blur(5px);
+            border-bottom: 2px solid #FFEB3B;
+            padding: 15px 20px;
+            text-align: center;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        h1 {
+            font-size: 1.5em;
+            color: #FFEB3B;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            line-height: 1.3;
+        }
+
+        .container {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .admin-box {
+            background-color: rgba(40, 40, 40, 0.9);
+            border: 2px solid #FFEB3B;
+            border-radius: 20px;
+            padding: 30px;
+            width: 100%;
+            max-width: 400px;
+            box-shadow: 0 8px 32px rgba(255, 235, 59, 0.15);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .admin-box:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 35px rgba(255, 235, 59, 0.25);
+        }
+
+        .admin-box h2 {
+            color: #FFEB3B;
+            text-align: center;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #FFEB3B;
+        }
+
+        .admin-box h2 .lang-zh {
+            display: block;
+            font-size: 1.2em;
+        }
+
+        .admin-box h2 .lang-en {
+            display: block;
+            font-size: 0.9em;
+            color: #FFDDC1;
+            margin-top: 5px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+            color: #FFDDC1;
+        }
+
+        .form-group input {            width: 100%;            padding: 12px 15px;            border: 2px solid #FFEB3B;            border-radius: 10px;            background-color: rgba(255, 255, 255, 0.1);            color: #FFDDC1;            font-size: 1.1em;            outline: none;            transition: all 0.3s ease;        }
+
+        /* 隐藏数字输入框的上下箭头 */        input[type=number]::-webkit-inner-spin-button,         input[type=number]::-webkit-outer-spin-button {             -webkit-appearance: none;             margin: 0;         }        input[type=number] {            -moz-appearance: textfield;        }
+
+        .form-group input:focus {
+            background-color: rgba(255, 255, 255, 0.2);
+            border-color: #FF9800;
+        }
+
+        .form-group input::placeholder {
+            color: rgba(255, 221, 193, 0.5);
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 30px;
+        }
+
+        .form-actions button {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-width: 100px;
+        }
+
+        .submit-btn {
+            background-color: #FFEB3B;
+            color: #1a1a1a;
+        }
+
+        .submit-btn:hover {
+            background-color: #FFC107;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 235, 59, 0.3);
+        }
+
+        .cancel-btn {
+            background-color: rgba(255, 255, 255, 0.1);
+            color: #FFDDC1;
+            border: 2px solid #FFDDC1;
+        }
+
+        .cancel-btn:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 12px 25px;
+            border-radius: 20px;
+            font-weight: bold;
+            z-index: 2000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.5s ease;
+        }
+
+        .notification.success {
+            background-color: rgba(76, 175, 80, 0.9);
+            color: white;
+        }
+
+        .notification.error {
+            background-color: rgba(244, 67, 54, 0.9);
+            color: white;
+        }
+
+        .notification.show {
+            opacity: 1;
+            visibility: visible;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        footer {
+            background-color: rgba(40, 40, 40, 0.8);
+            backdrop-filter: blur(5px);
+            border-top: 2px solid #FFEB3B;
+            padding: 15px 20px;
+            text-align: center;
+            margin-top: auto;
+        }
+
+        footer p {
+            color: #FFDDC1;
+            font-size: 0.9em;
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 1.2em;
+            }
+
+            .admin-box {
+                padding: 25px 20px;
+            }
+
+            .form-actions {
+                flex-direction: column;
+            }
+
+            .form-actions button {
+                width: 100%;
+            }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Coffee Bean Admin System</h1>
+    </header>
+
+    <div class="container">
+        <div class="admin-box">
+            <h2>
+                <span class="lang-zh">当日咖啡豆价格</span>
+                <span class="lang-en">Today's Coffee Price</span>
+            </h2>
+            <form id="price-form">
+                <div class="form-group">
+                    <label for="coffee-price">
+                        <span class="lang-zh">价格（元/吨）</span>
+                        <span class="lang-en">Price (Yuan/Ton)</span>
+                    </label>
+                    <input type="number" id="coffee-price" name="coffeePrice" placeholder="请输入价格" required min="0" step="any">
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="submit-btn">
+                        <span class="lang-zh">提交</span>
+                        <span class="lang-en">Submit</span>
+                    </button>
+                    <button type="button" class="cancel-btn" onclick="window.location.href='index.html'">
+                        <span class="lang-zh">取消</span>
+                        <span class="lang-en">Cancel</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="notification" class="notification"></div>
+
+    <footer>
+        <p>&copy; 2025 咖啡豆公司 - 管理后台</p>
+    </footer>
+
+    <script type="module">
+        // 从数据文件导入价格数据
+        import { priceData } from './data.js';
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const priceForm = document.getElementById('price-form');
+            const notification = document.getElementById('notification');
+            const currentDate = new Date().toISOString().split('T')[0]; // 获取当前日期，格式为YYYY-MM-DD
+            
+            // 显示通知的函数
+            function showNotification(message, isSuccess = true) {
+                notification.textContent = message;
+                notification.className = `notification ${isSuccess ? 'success' : 'error'} show`;
+                
+                setTimeout(() => {
+                    notification.className = 'notification';
+                }, 3000);
+            }
+
+            // 表单提交事件处理
+            priceForm.addEventListener('submit', (event) => {
+                event.preventDefault();
+                
+                const coffeePrice = document.getElementById('coffee-price').value;
+                
+                // 验证输入 - 将字符串转换为数字后再进行验证
+                const priceValue = parseFloat(coffeePrice);
+                if (!coffeePrice || isNaN(priceValue) || priceValue <= 0) {
+                    showNotification('请输入有效的价格', false);
+                    return;
+                }
+
+                    const newPriceData = {
+                    date: currentDate,
+                    price: parseInt(coffeePrice).toString() // 保持与data.js中价格格式一致（字符串类型）
+                }
+
+                // 同步数据到data.js（前端模拟）
+                try {
+                    // 创建一个新的数据数组，用于保存到localStorage
+                    let mergedPriceData = [];
+                    
+                    // 首先从localStorage获取现有数据，如果没有则使用data.js中的数据作为基础
+                    const localStorageData = JSON.parse(localStorage.getItem('priceData'));
+                    if (Array.isArray(localStorageData) && localStorageData.length > 0) {
+                        mergedPriceData = [...localStorageData];
+                    } else {
+                        // 如果localStorage为空，使用data.js的数据作为基础
+                        mergedPriceData = [...priceData];
+                    }
+                    
+                    // 检查是否已有今天的记录
+                    const todayIndex = mergedPriceData.findIndex(item => item.date === currentDate);
+                    
+                    if (todayIndex >= 0) {
+                        // 更新现有记录
+                        mergedPriceData[todayIndex] = newPriceData;
+                    } else {
+                        // 添加新记录到数组开头
+                        mergedPriceData.unshift(newPriceData);
+                        
+                        // 限制记录数量为30条
+                        if (mergedPriceData.length > 30) {
+                            mergedPriceData = mergedPriceData.slice(0, 30);
+                        }
+                    }
+                    
+                    // 按日期降序排序
+                    mergedPriceData.sort((a, b) => new Date(b.date) - new Date(a.date));
+                    
+                    // 保存到localStorage，模拟同步到data.js
+                    localStorage.setItem('priceData', JSON.stringify(mergedPriceData));
+                    console.log('Price data successfully saved and synchronized with data.js structure');
+                } catch (error) {
+                    console.error('Error saving price data:', error);
+                    showNotification('数据保存失败，请刷新页面后重试', false);
+                    return;
+                }
+                
+                // 显示成功通知
+                showNotification('价格更新成功！');
+                
+                // 延迟后重定向到首页
+                setTimeout(() => {
+                    window.location.href = 'index.html';
+                }, 1500);
+            });
+        });
+    </script>
+
+
+</body>
+</html>
