@@ -286,8 +286,8 @@
     </footer>
 
     <script type="module">
-        // 从数据文件导入价格数据
-        import { priceData } from './data.js';
+        // 从数据文件导入价格数据和保存函数
+        import { priceData, savePriceData } from './data.js';
 
         document.addEventListener('DOMContentLoaded', () => {
             const priceForm = document.getElementById('price-form');
@@ -322,42 +322,14 @@
                     price: parseInt(coffeePrice).toString() // 保持与data.js中价格格式一致（字符串类型）
                 }
 
-                // 同步数据到data.js（前端模拟）
+                // 使用data.js中的savePriceData函数保存价格数据
                 try {
-                    // 创建一个新的数据数组，用于保存到localStorage
-                    let mergedPriceData = [];
-                    
-                    // 首先从localStorage获取现有数据，如果没有则使用data.js中的数据作为基础
-                    const localStorageData = JSON.parse(localStorage.getItem('priceData'));
-                    if (Array.isArray(localStorageData) && localStorageData.length > 0) {
-                        mergedPriceData = [...localStorageData];
+                    const saveResult = savePriceData(newPriceData);
+                    if (saveResult) {
+                        console.log('Price data successfully saved and synchronized with data.js structure');
                     } else {
-                        // 如果localStorage为空，使用data.js的数据作为基础
-                        mergedPriceData = [...priceData];
+                        throw new Error('Failed to save price data');
                     }
-                    
-                    // 检查是否已有今天的记录
-                    const todayIndex = mergedPriceData.findIndex(item => item.date === currentDate);
-                    
-                    if (todayIndex >= 0) {
-                        // 更新现有记录
-                        mergedPriceData[todayIndex] = newPriceData;
-                    } else {
-                        // 添加新记录到数组开头
-                        mergedPriceData.unshift(newPriceData);
-                        
-                        // 限制记录数量为30条
-                        if (mergedPriceData.length > 30) {
-                            mergedPriceData = mergedPriceData.slice(0, 30);
-                        }
-                    }
-                    
-                    // 按日期降序排序
-                    mergedPriceData.sort((a, b) => new Date(b.date) - new Date(a.date));
-                    
-                    // 保存到localStorage，模拟同步到data.js
-                    localStorage.setItem('priceData', JSON.stringify(mergedPriceData));
-                    console.log('Price data successfully saved and synchronized with data.js structure');
                 } catch (error) {
                     console.error('Error saving price data:', error);
                     showNotification('数据保存失败，请刷新页面后重试', false);

@@ -425,7 +425,7 @@
 
     <script type="module">
         // 从数据文件导入价格数据
-        import { priceData } from './data.js';
+        import { priceData, getLatestPriceData } from './data.js';
 
         document.addEventListener('DOMContentLoaded', () => {
             const tableBody = document.getElementById('history-data-body');
@@ -441,36 +441,10 @@
                 return Math.ceil(data.length / itemsPerPage);
             }
 
-            // 获取价格数据 - 结合localStorage中的最新数据和data.js中的历史数据
+            // 获取价格数据 - 使用data.js中的getLatestPriceData函数
             function getPriceData() {
                 try {
-                    // 首先获取data.js中的历史数据作为基础
-                    let allPriceData = JSON.parse(JSON.stringify(priceData));
-                    
-                    // 然后尝试从localStorage中获取最新数据
-                    const storedPriceData = JSON.parse(localStorage.getItem('priceData'));
-                    
-                    if (Array.isArray(storedPriceData) && storedPriceData.length > 0) {
-                        // 创建日期到价格的映射，以便快速更新或添加数据
-                        const priceMap = new Map();
-                        
-                        // 先将所有历史数据添加到映射中
-                        allPriceData.forEach(item => {
-                            priceMap.set(item.date, item);
-                        });
-                        
-                        // 然后添加或更新localStorage中的最新数据
-                        storedPriceData.forEach(item => {
-                            priceMap.set(item.date, item);
-                        });
-                        
-                        // 将映射转换回数组
-                        allPriceData = Array.from(priceMap.values());
-                    }
-                    
-                    // 确保数据按日期降序排列（最新的在前）
-                    allPriceData.sort((a, b) => new Date(b.date) - new Date(a.date));
-                    
+                    const allPriceData = getLatestPriceData();
                     console.log('Total price records:', allPriceData.length);
                     return allPriceData;
                 } catch (error) {
