@@ -381,16 +381,37 @@
             // 更新当前价格显示
             const currentPriceElement = document.getElementById('current-price');
             
-            // 获取最新价格数据
-            try {
-                const allPriceData = getLatestPriceData();
-                if (Array.isArray(allPriceData) && allPriceData.length > 0) {
-                    const latestPrice = allPriceData[0].price;
-                    currentPriceElement.textContent = `¥${latestPrice} / ตัน (吨)`;
+            // 检测是否为移动设备
+            const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+            
+            // 刷新价格数据的函数
+            function refreshPriceData() {
+                try {
+                    const allPriceData = getLatestPriceData();
+                    if (Array.isArray(allPriceData) && allPriceData.length > 0) {
+                        const latestPrice = allPriceData[0].price;
+                        
+                        // 如果价格有变化，添加一个简单的动画效果
+                        if (currentPriceElement.textContent !== `¥${latestPrice} / ตัน (吨)`) {
+                            currentPriceElement.style.opacity = '0.5';
+                            setTimeout(() => {
+                                currentPriceElement.textContent = `¥${latestPrice} / ตัน (吨)`;
+                                currentPriceElement.style.opacity = '1';
+                            }, 200);
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error updating current price:', error);
                 }
-            } catch (error) {
-                console.error('Error updating current price:', error);
             }
+            
+            // 初始加载价格数据
+            refreshPriceData();
+            
+            // 为PC端设置更频繁的自动刷新（每30秒）
+            // 移动端由于交互更频繁，刷新间隔可以更长
+            const refreshInterval = isMobile ? 60000 : 30000;
+            setInterval(refreshPriceData, refreshInterval);
 
             const contactBtn = document.getElementById('contact-btn');
             const contactModal = document.getElementById('contact-modal');

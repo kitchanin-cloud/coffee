@@ -435,6 +435,23 @@
             const itemsPerPage = 10;
             let currentPage = 1;
             let totalPages = 3; // 初始值，将在获取数据后动态更新
+            
+            // 检测是否为移动设备
+            const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+            
+            // 设置自动刷新间隔（PC端30秒，移动端60秒）
+            const refreshInterval = isMobile ? 60000 : 30000;
+            
+            // 启动自动刷新计时器
+            const refreshTimer = setInterval(() => {
+                // 刷新当前页数据
+                renderPage(currentPage);
+            }, refreshInterval);
+            
+            // 页面卸载时清除计时器
+            window.addEventListener('beforeunload', () => {
+                clearInterval(refreshTimer);
+            });
 
             // 动态计算总页数
             function calculateTotalPages(data) {
