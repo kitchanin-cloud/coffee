@@ -35,31 +35,11 @@ const basePriceData = [
   { date: '2025-08-21', price: '58432' }
 ];
 
-// 获取最新的价格数据（合并baseData和localStorage中的数据）
+// 获取最新的价格数据（只返回新生成的基础数据，不合并localStorage中的旧数据）
 export function getLatestPriceData() {
   try {
-    // 创建日期到价格的映射，以便快速更新或添加数据
-    const priceMap = new Map();
-    
-    // 先将所有基础数据添加到映射中
-    basePriceData.forEach(item => {
-      priceMap.set(item.date, item);
-    });
-    
-    // 然后尝试从localStorage获取数据并合并
-    const storedPriceData = JSON.parse(localStorage.getItem('priceData'));
-    if (Array.isArray(storedPriceData) && storedPriceData.length > 0) {
-      // 添加或更新localStorage中的数据
-      storedPriceData.forEach(item => {
-        priceMap.set(item.date, item);
-      });
-    }
-    
-    // 将映射转换回数组并按日期降序排序
-    const mergedData = Array.from(priceMap.values())
-      .sort((a, b) => new Date(b.date) - new Date(a.date));
-    
-    return mergedData;
+    // 只返回基础数据，并按日期降序排序
+    return [...basePriceData].sort((a, b) => new Date(b.date) - new Date(a.date));
   } catch (error) {
     console.error('Error getting latest price data:', error);
     // 出错时回退到使用基础数据
