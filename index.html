@@ -330,6 +330,11 @@
                     <span class="lang-th">ข้อมูลติดต่อ</span>
                     <span class="lang-zh">联系信息</span>
                 </button>
+                <button id="sync-btn" title="从URL刷新最新价格">
+                    <span class="lang-en">Sync Now</span>
+                    <span class="lang-th">ซิงค์ข้อมูล</span>
+                    <span class="lang-zh">立即同步</span>
+                </button>
             </div>
         </div>
     </div>
@@ -373,9 +378,6 @@
         <p>&copy; 2025 咖啡豆公司 - All Rights Reserved</p>
     </footer>
     
-    <!-- 引入跨设备价格同步工具 -->
-    <script src="./test_price_sync.js"></script>
-
     <script type="module">
         // 从数据文件导入必要的函数
         import { getLatestPriceData } from './data.js';
@@ -455,6 +457,48 @@
                     contactModal.style.display = 'none';
                 }
             });
+
+            // 立即同步按钮事件
+            const syncBtn = document.getElementById('sync-btn');
+            if (syncBtn) {
+                syncBtn.addEventListener('click', () => {
+                    console.log('用户手动触发数据同步...');
+                    if (window.parseDataFromUrlHash) {
+                        const synced = window.parseDataFromUrlHash();
+                        if (synced) {
+                            console.log('手动同步成功');
+                            // 显示成功消息
+                            const notification = document.createElement('div');
+                            notification.style.position = 'fixed';
+                            notification.style.top = '20px';
+                            notification.style.left = '50%';
+                            notification.style.transform = 'translateX(-50%)';
+                            notification.style.backgroundColor = '#4CAF50';
+                            notification.style.color = 'white';
+                            notification.style.padding = '15px 30px';
+                            notification.style.borderRadius = '5px';
+                            notification.style.zIndex = '1000';
+                            notification.style.boxShadow = '0 4px 8px rgba(0,0,0,0.2)';
+                            notification.textContent = '价格数据已成功同步！';
+                            document.body.appendChild(notification);
+                            
+                            setTimeout(() => {
+                                notification.style.opacity = '0';
+                                notification.style.transition = 'opacity 0.5s';
+                                setTimeout(() => {
+                                    if (notification.parentNode) {
+                                        notification.parentNode.removeChild(notification);
+                                    }
+                                }, 500);
+                            }, 2000);
+                        } else {
+                            console.log('没有新数据需要同步');
+                        }
+                    } else {
+                        console.warn('同步工具不可用');
+                    }
+                });
+            }
         });
     </script>
         
@@ -573,106 +617,20 @@
             });
         </script>
         
-        <script type="module">
-        // 从数据文件导入价格数据和函数
-        import { priceData, getLatestPriceData } from './data.js';
-        </script>
-        
         <!-- 引入跨设备价格同步工具 -->
         <script src="./test_price_sync.js"></script>
         
         <script type="module">
-        
-        // 更新价格显示的函数
-        function updatePriceDisplay(newPriceData) {
-            try {
-                // 如果没有提供新数据，获取最新的价格数据
-                const latestData = newPriceData || getLatestPriceData();
-                
-                if (latestData && Array.isArray(latestData) && latestData.length > 0) {
-                    // 获取最新的价格（第一条记录）
-                    const latestPrice = latestData[0];
-                    
-                    // 更新价格显示
-                    const priceValueEl = document.querySelector('.price-value');
-                    if (priceValueEl) {
-                        // 添加过渡动画效果
-                        priceValueEl.style.transition = 'all 0.5s ease';
-                        priceValueEl.style.opacity = '0.5';
-                        
-                        setTimeout(() => {
-                            priceValueEl.textContent = latestPrice.price;
-                            priceValueEl.style.opacity = '1';
-                        }, 200);
-                        
-                        console.log('价格显示已更新:', latestPrice);
-                    }
-                }
-            } catch (error) {
-                console.error('更新价格显示时出错:', error);
-            }
-        }
-        
-        // 监听价格更新事件，当其他设备更新价格时，实时更新当前页面
-        window.addEventListener('price-updated', function(event) {
-            console.log('收到价格更新事件，开始更新页面显示...');
-            updatePriceDisplay(event.detail.data);
-            
-            // 刷新GIF动画以吸引用户注意
-            if (window.refreshGIF) {
-                window.refreshGIF();
-            }
-        });
-        
-        // 添加一个函数来获取当前的同步URL，方便用户复制分享
-        window.getSyncUrl = function() {
-            const currentUrl = window.location.href;
-            // 提取基础URL和哈希部分
-            const hashIndex = currentUrl.indexOf('#');
-            let baseUrl = currentUrl;
-            let hash = '';
-            
-            if (hashIndex >= 0) {
-                baseUrl = currentUrl.substring(0, hashIndex);
-                hash = currentUrl.substring(hashIndex);
-            }
-            
-            // 确保包含最新的同步数据哈希
-            const sharedDataBackup = localStorage.getItem('sharedPriceDataBackup');
-            if (sharedDataBackup) {
-                try {
-                    const sharedData = JSON.parse(sharedDataBackup);
-                    const miniData = {
-                        t: sharedData.timestamp,
-                        d: sharedData.data.slice(0, 10)
-                    };
-                    const encodedData = btoa(JSON.stringify(miniData));
-                    
-                    if (encodedData) {
-                        return baseUrl + '#' + encodedData;
-                    }
-                } catch (error) {
-                    console.error('生成同步URL时出错:', error);
-                }
-            }
-            
-            return currentUrl;
-        };
-        
-        // 页面加载完成后立即执行一次同步检查
+        // 页面加载完成后立即尝试从URL哈希同步数据
         document.addEventListener('DOMContentLoaded', function() {
-            // 立即尝试从共享文件同步数据
-            if (window.syncFromSharedFile) {
-                console.log('页面加载完成，尝试同步最新价格数据...');
-                window.syncFromSharedFile();
-            }
-            
-            // 设置一个定时器，定期同步数据（每10秒）
-            setInterval(function() {
-                if (window.syncFromSharedFile) {
-                    window.syncFromSharedFile();
+            // 立即尝试从URL哈希同步数据
+            if (window.parseDataFromUrlHash) {
+                console.log('页面加载完成，尝试从URL哈希同步最新价格数据...');
+                const hasSynced = window.parseDataFromUrlHash();
+                if (hasSynced) {
+                    console.log('成功从URL哈希同步数据');
                 }
-            }, 10000);
+            }
         });
         </script>
         
