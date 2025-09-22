@@ -35,24 +35,40 @@ const basePriceData = [
   { date: '2025-08-21', price: '58432' }
 ];
 
-// 获取最新的价格数据（合并baseData和localStorage中的数据用于展示）
+// 获取最新的价格数据（优先使用共享数据源，确保跨设备同步）
 export function getLatestPriceData() {
   try {
-    console.log('Getting latest price data...');
+    console.log('Getting latest price data with cross-device sync support...');
     
-    // 创建日期到价格的映射，以便快速更新或添加数据
+    let finalData = [];
+    
+    // 1. 优先从全局共享数据源获取数据（用于跨设备同步）
+    if (typeof window !== 'undefined' && window.sharedPriceData && window.sharedPriceData.data) {
+      console.log('Using sharedPriceData as primary data source');
+      finalData = [...window.sharedPriceData.data];
+    }
+    
+    // 2. 创建日期到价格的映射，以便快速更新或添加数据
     const priceMap = new Map();
     
-    // 先将所有基础数据添加到映射中
-    basePriceData.forEach(item => {
+    // 先将共享数据添加到映射中
+    finalData.forEach(item => {
       if (item && item.date && item.price) {
         priceMap.set(item.date, { ...item });
       }
     });
     
-    console.log('Base data loaded, records:', basePriceData.length);
+    // 3. 如果共享数据源为空，使用基础数据
+    if (finalData.length === 0) {
+      basePriceData.forEach(item => {
+        if (item && item.date && item.price) {
+          priceMap.set(item.date, { ...item });
+        }
+      });
+      console.log('Base data loaded, records:', basePriceData.length);
+    }
     
-    // 然后尝试从localStorage获取数据并合并
+    // 4. 然后尝试从localStorage获取数据并合并
     try {
       const storedDataStr = localStorage.getItem('priceData');
       if (storedDataStr) {
@@ -61,24 +77,32 @@ export function getLatestPriceData() {
           // 添加或更新localStorage中的数据
           storedPriceData.forEach(item => {
             if (item && item.date && item.price) {
-              priceMap.set(item.date, { ...item });
+              // 检查是否需要更新现有记录
+              const existingItem = priceMap.get(item.date);
+              const storedTimestamp = parseInt(item.timestamp || '0');
+              const existingTimestamp = existingItem && existingItem.timestamp ? parseInt(existingItem.timestamp) : 0;
+              
+              // 只在新数据更新时才更新
+              if (!existingItem || storedTimestamp > existingTimestamp) {
+                priceMap.set(item.date, { ...item });
+              }
             }
           });
-          console.log('Local storage data merged, added records:', storedPriceData.length);
+          console.log('Local storage data merged with timestamp comparison');
         }
       }
     } catch (localStorageError) {
-      console.warn('Error reading from localStorage, using base data only:', localStorageError);
+      console.warn('Error reading from localStorage:', localStorageError);
     }
     
-    // 将映射转换回数组并按日期降序排序
+    // 5. 将映射转换回数组并按日期降序排序
     const mergedData = Array.from(priceMap.values())
       .filter(item => item && item.date && item.price) // 确保数据完整性
       .sort((a, b) => new Date(b.date) - new Date(a.date));
     
     console.log('Final merged data, total records:', mergedData.length);
     
-    // 确保返回的数组不为空
+    // 6. 确保返回的数组不为空
     if (!Array.isArray(mergedData) || mergedData.length === 0) {
       console.warn('Merged data is empty, returning base data');
       return [...basePriceData].sort((a, b) => new Date(b.date) - new Date(a.date));
@@ -102,10 +126,10 @@ function initPriceChannel() {
   }
 }
 
-// 保存新的价格数据 - 增强版，更好地支持跨设备同步
+// 保存新的价格数据 - 增强版，实现全局数据同步，确保所有设备使用同一组数据
 export function savePriceData(newPrice) {
   try {
-    console.log('Attempting to save price data:', newPrice);
+    console.log('Attempting to save price data with global sync support:', newPrice);
     
     // 验证新价格数据的完整性
     if (!newPrice || !newPrice.date || !newPrice.price) {
@@ -163,7 +187,20 @@ export function savePriceData(newPrice) {
     const recentData = updatedData.slice(0, 90);
     console.log('Final data after processing, records:', recentData.length);
     
-    // 保存到localStorage
+    // 1. 更新全局共享数据源（关键步骤，确保所有设备使用同一组数据）
+    if (typeof window !== 'undefined' && window.updateSharedPriceData) {
+      const deviceId = localStorage.getItem('deviceId') || `device_${Date.now()}`;
+      localStorage.setItem('deviceId', deviceId); // 保存设备ID以供后续使用
+      
+      const updateResult = window.updateSharedPriceData(recentData, deviceId, deviceType);
+      if (updateResult) {
+        console.log('Successfully updated global shared price data');
+      } else {
+        console.warn('Failed to update global shared price data');
+      }
+    }
+    
+    // 2. 保存到localStorage（作为本地缓存）
     try {
       localStorage.setItem('priceData', JSON.stringify(recentData));
       // 存储最后更新时间戳，用于跨设备同步比较
@@ -171,10 +208,9 @@ export function savePriceData(newPrice) {
       console.log('Price data successfully saved to localStorage with sync timestamp');
     } catch (storageError) {
       console.error('Error saving to localStorage:', storageError);
-      // 即使localStorage保存失败，我们仍然尝试广播数据
     }
     
-    // 发送广播通知同一浏览器的其他页面数据已更新
+    // 3. 发送广播通知同一浏览器的其他页面数据已更新
     initPriceChannel();
     if (priceChannel) {
       priceChannel.postMessage({ 
@@ -186,7 +222,7 @@ export function savePriceData(newPrice) {
       console.log('Price update broadcast sent with sync info');
     }
     
-    // 触发全局自定义事件，便于其他脚本监听价格更新
+    // 4. 触发全局自定义事件，便于其他脚本监听价格更新
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('price-data-saved', {
         detail: {
@@ -195,7 +231,26 @@ export function savePriceData(newPrice) {
           sourceDevice: enhancedPriceData.sourceDevice
         }
       }));
-      console.log('Price data saved event dispatched');
+      window.dispatchEvent(new CustomEvent('global-data-updated', {
+        detail: {
+          timestamp: Date.now(),
+          syncId: enhancedPriceData.syncId
+        }
+      }));
+      console.log('Price data saved events dispatched');
+    }
+    
+    // 5. 主动刷新所有页面数据（通过URL参数触发）
+    if (typeof window !== 'undefined') {
+      try {
+        const timestamp = Date.now();
+        const forceSyncUrl = `${window.location.origin}${window.location.pathname}?sync=true&t=${timestamp}#forceSync`;
+        // 使用replaceState而不是直接跳转，避免历史记录堆积
+        window.history.replaceState({}, document.title, forceSyncUrl);
+        console.log('Force sync URL set to trigger data refresh on all devices');
+      } catch (urlError) {
+        console.warn('Failed to update URL for force sync:', urlError);
+      }
     }
     
     return true;

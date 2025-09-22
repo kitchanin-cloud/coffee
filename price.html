@@ -424,6 +424,24 @@
                         console.log('成功从URL哈希同步数据');
                     }
                 }
+                
+                // 检查全局共享数据源
+                if (window.sharedPriceData) {
+                    console.log('检测到全局共享数据源已就绪');
+                    // 立即尝试同步
+                    if (typeof window.syncFromSharedData === 'function') {
+                        window.syncFromSharedData();
+                    }
+                }
+                
+                // 监听全局数据更新事件
+                window.addEventListener('global-data-updated', function(event) {
+                    console.log('接收到全局数据更新通知:', event.detail);
+                    // 尝试从全局共享数据源同步
+                    if (typeof window.syncFromSharedData === 'function') {
+                        window.syncFromSharedData();
+                    }
+                });
             });
         </script>
         

@@ -8,8 +8,9 @@
     // 配置项
     const CONFIG = {
         URL_DATA_LIMIT: 30,      // URL中保留的数据条数
-        SYNC_CHECK_INTERVAL: 2000, // 同步检查间隔（毫秒）- 进一步缩短至2秒提高实时性
-        DATA_EXPIRY_TIME: 60 * 60 * 1000 // 数据过期时间（1小时）
+        SYNC_CHECK_INTERVAL: 1000, // 同步检查间隔（毫秒）- 缩短至1秒提高实时性
+        DATA_EXPIRY_TIME: 60 * 60 * 1000, // 数据过期时间（1小时）
+        SHARED_DATA_POLL_INTERVAL: 500 // 全局共享数据源轮询间隔（毫秒）
     };
     
     // 生成唯一同步ID
@@ -267,14 +268,23 @@
     window.getSyncUrl = function() {
         try {
             const baseUrl = window.location.origin + window.location.pathname;
-            const allPriceData = JSON.parse(localStorage.getItem('priceData') || '[]');
+            
+            // 优先使用全局共享数据源
+            let allPriceData = [];
+            if (window.sharedPriceData && window.sharedPriceData.data && Array.isArray(window.sharedPriceData.data)) {
+                allPriceData = window.sharedPriceData.data;
+                console.log('使用全局共享数据源生成同步URL');
+            } else {
+                allPriceData = JSON.parse(localStorage.getItem('priceData') || '[]');
+            }
+            
             const timestamp = Date.now();
             
             // 构造精简数据
             const miniData = {
                 t: timestamp,
                 d: allPriceData.slice(0, CONFIG.URL_DATA_LIMIT),
-                v: 6, // 再次更新版本号以强制重新同步
+                v: 7, // 更新版本号以强制重新同步
                 forceRefresh: true // 添加强制刷新标记
             };
             
@@ -311,6 +321,67 @@
             }
         } catch (error) {
             console.error('强制刷新数据时出错:', error);
+        }
+    };
+    
+    // 从全局共享数据源同步数据
+    function syncFromSharedData() {
+        try {
+            if (!window.sharedPriceData || !window.sharedPriceData.data || !Array.isArray(window.sharedPriceData.data)) {
+                return false;
+            }
+            
+            const sharedData = window.sharedPriceData.data;
+            const sharedTimestamp = window.sharedPriceData.timestamp || Date.now();
+            const localLastUpdate = parseInt(localStorage.getItem('lastPriceUpdate') || '0');
+            
+            // 如果共享数据比本地数据更新，则同步
+            if (sharedTimestamp > localLastUpdate) {
+                console.log('发现更新的全局共享数据，正在同步...');
+                
+                // 保存共享数据到localStorage
+                localStorage.setItem('priceData', JSON.stringify(sharedData));
+                localStorage.setItem('lastPriceUpdate', sharedTimestamp.toString());
+                localStorage.setItem('lastSyncTime', Date.now().toString());
+                
+                // 触发价格更新事件
+                window.dispatchEvent(new CustomEvent('price-updated', {
+                    detail: {
+                        data: sharedData,
+                        source: 'shared-data',
+                        syncId: generateSyncId()
+                    }
+                }));
+                
+                // 触发全局数据更新事件
+                window.dispatchEvent(new CustomEvent('global-data-updated', {
+                    detail: {
+                        data: sharedData,
+                        source: 'shared-data-sync'
+                    }
+                }));
+                
+                console.log('成功从全局共享数据源同步数据，共', sharedData.length, '条记录');
+                return true;
+            }
+            return false;
+        } catch (error) {
+            console.warn('从全局共享数据源同步数据时出错:', error);
+            return false;
+        }
+    }
+    
+    // 轮询全局共享数据源更新
+    function pollSharedDataUpdates() {
+        try {
+            if (window.sharedPriceData) {
+                // 尝试同步数据
+                syncFromSharedData();
+            } else {
+                console.log('等待全局共享数据源就绪...');
+            }
+        } catch (error) {
+            console.warn('轮询全局共享数据源时出错:', error);
         }
     };
     
@@ -367,11 +438,19 @@
             }
         }, CONFIG.SYNC_CHECK_INTERVAL);
         
+        // 轮询全局共享数据源更新
+        setInterval(pollSharedDataUpdates, CONFIG.SHARED_DATA_POLL_INTERVAL);
+        
+        // 立即执行一次全局共享数据源检查
+        setTimeout(pollSharedDataUpdates, 500);
+        
         // 导出函数以便其他文件使用
         window.saveAndSyncPriceData = saveAndSyncPriceData;
         window.parseDataFromUrlHash = parseDataFromUrlHash;
+        window.syncFromSharedData = syncFromSharedData;
         
         console.log('跨设备价格同步工具初始化完成!');
+        console.log('全局共享数据源监控已启动，轮询间隔:', CONFIG.SHARED_DATA_POLL_INTERVAL, 'ms');
     }
     
     // 立即执行初始化

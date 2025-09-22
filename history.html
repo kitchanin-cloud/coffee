@@ -37,6 +37,12 @@
         // 监听全局数据更新事件
         window.addEventListener('global-data-updated', function(event) {
             console.log('接收到全局数据更新通知:', event.detail);
+            
+            // 尝试从全局共享数据源同步
+            if (typeof window.syncFromSharedData === 'function') {
+                window.syncFromSharedData();
+            }
+            
             // 触发历史数据重新加载
             if (typeof loadPriceHistory === 'function') {
                 loadPriceHistory();
@@ -54,6 +60,11 @@
                 window.parseDataFromUrlHash();
             }
             
+            // 尝试从全局共享数据源同步
+            if (typeof window.syncFromSharedData === 'function') {
+                window.syncFromSharedData();
+            }
+            
             // 更新历史数据UI
             if (typeof loadPriceHistory === 'function') {
                 loadPriceHistory();
@@ -64,6 +75,15 @@
                 clearInterval(enhancedCheckInterval);
             }
         }, 1000);
+        
+        // 添加共享数据源就绪事件监听
+        if (window.sharedPriceData) {
+            console.log('检测到全局共享数据源已就绪');
+            // 立即尝试同步
+            if (typeof window.syncFromSharedData === 'function') {
+                window.syncFromSharedData();
+            }
+        }
     });
     </script>
     <title>价格历史 - Price History</title>
