@@ -676,73 +676,7 @@
         });
         </script>
         
-        <!-- 为用户添加一个简单的同步信息显示 -->
-        <!-- 同步信息和操作面板 -->
-        <div id="sync-info" style="position: fixed; bottom: 60px; left: 50%; transform: translateX(-50%); background-color: rgba(0,0,0,0.7); padding: 10px 20px; border-radius: 20px; font-size: 12px; color: #FFDDC1; opacity: 0.7; z-index: 1000;"></div>
-        
-        <!-- 同步操作按钮 -->
-        <div id="sync-actions" style="position: fixed; bottom: 20px; right: 20px; display: flex; gap: 10px; z-index: 1000;">
-            <button id="force-sync-btn" style="background-color: #6f4e37; color: #FFDDC1; border: none; border-radius: 10px; padding: 5px 10px; font-size: 12px; cursor: pointer;">强制同步</button>
-            <button id="get-sync-url-btn" style="background-color: #6f4e37; color: #FFDDC1; border: none; border-radius: 10px; padding: 5px 10px; font-size: 12px; cursor: pointer;">获取同步URL</button>
-        </div>
-        
-        <script>
-            // 显示同步信息
-            function showSyncInfo() {
-                const syncInfoEl = document.getElementById('sync-info');
-                if (syncInfoEl) {
-                    const lastSyncTime = localStorage.getItem('lastSyncTime') || '从未';
-                    const lastPriceUpdate = localStorage.getItem('lastPriceUpdate') || '从未';
-                    
-                    let message = '同步状态：正常';
-                    if (lastSyncTime !== '从未') {
-                        const syncDate = new Date(parseInt(lastSyncTime));
-                        message += ' | 上次同步：' + syncDate.toLocaleTimeString();
-                    }
-                    
-                    if (window.location.hash && window.location.hash.length > 10) {
-                        message += ' | URL包含同步数据';
-                    }
-                    
-                    syncInfoEl.textContent = message;
-                }
-            }
-            
-            // 页面加载后显示同步信息
-            setTimeout(showSyncInfo, 1000);
-            
-            // 每3秒更新一次同步信息
-            setInterval(showSyncInfo, 3000);
-            
-            // 强制同步按钮点击事件
-            document.getElementById('force-sync-btn').addEventListener('click', function() {
-                console.log('执行强制同步...');
-                // 添加force=true参数到URL
-                const url = new URL(window.location.href);
-                url.searchParams.set('force', 'true');
-                window.location.href = url.toString();
-            });
-            
-            // 获取同步URL按钮点击事件
-            document.getElementById('get-sync-url-btn').addEventListener('click', function() {
-                if (window.getSyncUrl) {
-                    const syncUrl = window.getSyncUrl();
-                    // 复制URL到剪贴板
-                    navigator.clipboard.writeText(syncUrl).then(function() {
-                        alert('同步URL已复制到剪贴板，可以粘贴到其他设备了！');
-                    }).catch(function(err) {
-                        console.error('无法复制URL: ', err);
-                        // 降级方案：显示URL
-                        prompt('请复制此同步URL:', syncUrl);
-                    });
-                }
-            });
-            
-            // 监听同步完成事件，更新显示
-            window.addEventListener('sync-completed', function(e) {
-                showSyncInfo();
-            });
-        </script>
+
     </body>
 </html>
 
