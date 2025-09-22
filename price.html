@@ -365,19 +365,30 @@
                         document.getElementById('coffee-price').value = '';
                         console.log('价格已更新，数据已保存');
                         
-                        // 强制重新生成包含完整最新数据的同步URL
+                        // 强制重新生成包含完整最新数据的同步URL - 使用增强版防缓存机制
                         if (typeof window.getSyncUrl === 'function') {
-                            const syncUrl = window.getSyncUrl();
+                            const syncUrl = window.getSyncUrl(); // 已经包含时间戳和版本号
                             if (syncUrl) {
-                                // 添加时间戳参数，确保URL变化能被检测到
-                                const timestamp = Date.now();
-                                const urlWithTimestamp = syncUrl.includes('?') 
-                                    ? `${syncUrl}&t=${timestamp}` 
-                                    : `${syncUrl}?t=${timestamp}`;
+                                // 确保URL包含force=true参数以强制PC端刷新
+                                const forceUrl = syncUrl.includes('force=true') 
+                                    ? syncUrl 
+                                    : (syncUrl.includes('?') 
+                                       ? `${syncUrl}&force=true` 
+                                       : `${syncUrl}?force=true`);
                                 
-                                window.history.replaceState({}, document.title, urlWithTimestamp);
-                                console.log('页面URL已更新为包含完整同步数据的URL');
+                                window.history.replaceState({}, document.title, forceUrl);
+                                console.log('页面URL已更新为包含完整同步数据的防缓存URL');
                             }
+                        }
+                        
+                        // 触发全局数据更新通知
+                        if (typeof window !== 'undefined') {
+                            window.dispatchEvent(new CustomEvent('global-data-updated', {
+                                detail: {
+                                    timestamp: Date.now(),
+                                    syncId: newPriceData.syncId || 'unknown'
+                                }
+                            }));
                         }
                         
                         // 延迟跳转到index页面，让用户看到成功提示

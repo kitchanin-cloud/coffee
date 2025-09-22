@@ -3,6 +3,69 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- 添加防缓存控制 -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    
+    <!-- 数据同步优化脚本 -->
+    <script>
+    // 页面加载时检查是否需要强制刷新数据
+    document.addEventListener('DOMContentLoaded', function() {
+        // 检查URL参数，判断是否需要强制刷新
+        const urlParams = new URLSearchParams(window.location.search);
+        const forceRefresh = urlParams.get('force') === 'true';
+        const hasRecentHashData = window.location.hash && window.location.hash.length > 10;
+        
+        // 如果需要强制刷新或者有哈希数据，尝试强制刷新
+        if (forceRefresh || hasRecentHashData) {
+            console.log('检测到需要强制刷新数据的条件');
+            setTimeout(() => {
+                if (typeof window.forceRefreshData === 'function') {
+                    window.forceRefreshData();
+                } else {
+                    // 如果forceRefreshData函数尚未加载，延迟后重试
+                    setTimeout(() => {
+                        if (typeof window.forceRefreshData === 'function') {
+                            window.forceRefreshData();
+                        }
+                    }, 500);
+                }
+            }, 300);
+        }
+        
+        // 监听全局数据更新事件
+        window.addEventListener('global-data-updated', function(event) {
+            console.log('接收到全局数据更新通知:', event.detail);
+            // 触发历史数据重新加载
+            if (typeof loadPriceHistory === 'function') {
+                loadPriceHistory();
+            }
+        });
+        
+        // 增强的定时检查机制，前5秒每秒检查一次
+        let checkCount = 0;
+        const enhancedCheckInterval = setInterval(() => {
+            checkCount++;
+            console.log('增强版数据同步检查 #' + checkCount);
+            
+            // 尝试从URL哈希加载数据
+            if (typeof window.parseDataFromUrlHash === 'function') {
+                window.parseDataFromUrlHash();
+            }
+            
+            // 更新历史数据UI
+            if (typeof loadPriceHistory === 'function') {
+                loadPriceHistory();
+            }
+            
+            // 5秒后降低检查频率
+            if (checkCount >= 5) {
+                clearInterval(enhancedCheckInterval);
+            }
+        }, 1000);
+    });
+    </script>
     <title>价格历史 - Price History</title>
     <style>
         body {

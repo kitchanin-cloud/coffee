@@ -263,7 +263,7 @@
         }
     }
     
-    // 生成包含最新数据的同步URL
+    // 生成包含最新数据的同步URL - 增强版（含防缓存措施）
     window.getSyncUrl = function() {
         try {
             const baseUrl = window.location.origin + window.location.pathname;
@@ -273,17 +273,44 @@
             // 构造精简数据
             const miniData = {
                 t: timestamp,
-                d: allPriceData.slice(0, CONFIG.URL_DATA_LIMIT)
+                d: allPriceData.slice(0, CONFIG.URL_DATA_LIMIT),
+                v: 6, // 再次更新版本号以强制重新同步
+                forceRefresh: true // 添加强制刷新标记
             };
             
             // 编码数据
             const encodedData = btoa(JSON.stringify(miniData));
             
-            // 生成最终同步URL
-            return baseUrl + '#' + encodedData;
+            // 生成最终同步URL，添加时间戳查询参数以防止浏览器缓存
+            const timestampQueryParam = `?t=${timestamp}`;
+            return baseUrl + timestampQueryParam + '#' + encodedData;
         } catch (error) {
             console.error('生成同步URL时出错:', error);
             return window.location.href;
+        }
+    };
+    
+    // 强制刷新数据函数 - 绕过浏览器缓存
+    window.forceRefreshData = function() {
+        try {
+            console.log('执行强制数据刷新...');
+            
+            // 清除可能存在的缓存数据
+            localStorage.removeItem('priceDataCache');
+            
+            // 生成新的同步URL并刷新页面
+            const syncUrl = window.getSyncUrl();
+            if (syncUrl) {
+                // 添加force=true参数确保强制刷新
+                const forceUrl = syncUrl.includes('?') 
+                    ? `${syncUrl}&force=true` 
+                    : `${syncUrl}?force=true`;
+                
+                console.log('强制刷新URL:', forceUrl);
+                window.location.href = forceUrl;
+            }
+        } catch (error) {
+            console.error('强制刷新数据时出错:', error);
         }
     };
     
