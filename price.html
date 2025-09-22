@@ -338,73 +338,67 @@
                 return;
             }
 
-            // 使用Promise链式调用处理异步保存和同步
-            Promise.resolve(savePriceData(newPriceData))
-                .then(saveResult => {
-                    if (saveResult) {
-                        console.log('价格数据保存成功，开始同步...');
+            // 使用同步方式处理保存和同步，避免异步操作导致的URL更新不及时
+            try {
+                // 同步保存价格数据
+                const saveResult = savePriceData(newPriceData);
+                if (saveResult) {
+                    console.log('价格数据保存成功，开始同步...');
+                    
+                    // 构造用于同步的数据对象
+                    const syncPriceData = {
+                        price: priceValue,
+                        currency: 'CNY',
+                        unit: '吨'
+                    };
+                    
+                    // 调用同步函数，传入完整的价格数据对象
+                    if (window.saveAndSyncPriceData) {
+                        // 执行同步操作 - 确保生成包含完整数据的URL
+                        const syncResult = window.saveAndSyncPriceData(syncPriceData);
+                        console.log('同步操作结果:', syncResult);
                         
-                        // 构造用于同步的数据对象
-                        const syncPriceData = {
-                            price: priceValue,
-                            currency: 'CNY',
-                            unit: '吨'
-                        };
+                        // 不管同步结果如何，都显示成功并跳转
+                        showNotification('价格更新成功！\n正在跳转到首页...', true);
                         
-                        // 调用同步函数，传入完整的价格数据对象
-                        if (window.saveAndSyncPriceData) {
-                            try {
-                                // 执行同步操作
-                                const syncResult = window.saveAndSyncPriceData(syncPriceData);
-                                console.log('同步操作结果:', syncResult);
+                        // 清空表单输入框
+                        document.getElementById('coffee-price').value = '';
+                        console.log('价格已更新，数据已保存');
+                        
+                        // 强制重新生成包含完整最新数据的同步URL
+                        if (typeof window.getSyncUrl === 'function') {
+                            const syncUrl = window.getSyncUrl();
+                            if (syncUrl) {
+                                // 添加时间戳参数，确保URL变化能被检测到
+                                const timestamp = Date.now();
+                                const urlWithTimestamp = syncUrl.includes('?') 
+                                    ? `${syncUrl}&t=${timestamp}` 
+                                    : `${syncUrl}?t=${timestamp}`;
                                 
-                                // 不管同步结果如何，都显示成功并跳转
-                                // 因为我们已经保存了本地数据，同步问题可以通过刷新解决
-                                showNotification('价格更新成功！\n正在跳转到首页...', true);
-                                
-                                // 清空表单输入框
-                                document.getElementById('coffee-price').value = '';
-                                console.log('价格已更新，数据已保存');
-                                
-                                // 重新生成同步URL并更新当前页面URL
-                                if (typeof window.getSyncUrl === 'function') {
-                                    const syncUrl = window.getSyncUrl();
-                                    if (syncUrl) {
-                                        window.history.replaceState({}, document.title, syncUrl);
-                                        console.log('页面URL已更新为同步URL');
-                                    }
-                                }
-                                
-                                // 延迟跳转到index页面，让用户看到成功提示
-                                setTimeout(() => {
-                                    window.location.href = 'index.html';
-                                }, 1500);
-                                
-                                return syncResult;
-                            } catch (syncError) {
-                                console.error('同步操作出错:', syncError);
-                                showNotification('价格已更新，但同步出错', true);
-                                // 即使同步出错，也跳转到index页面
-                                setTimeout(() => {
-                                    window.location.href = 'index.html';
-                                }, 1500);
-                                return false;
+                                window.history.replaceState({}, document.title, urlWithTimestamp);
+                                console.log('页面URL已更新为包含完整同步数据的URL');
                             }
-                        } else {
-                            showNotification('价格已更新，但无法同步', true);
-                            console.log('同步函数不可用，数据仅保存在本地');
-                            return false;
                         }
+                        
+                        // 延迟跳转到index页面，让用户看到成功提示
+                        setTimeout(() => {
+                            window.location.href = 'index.html';
+                        }, 1500);
                     } else {
-                        showNotification('保存失败，请重试', false);
-                        console.error('价格数据保存失败');
-                        throw new Error('保存失败');
+                        showNotification('价格已更新，但无法同步', true);
+                        console.log('同步函数不可用，数据仅保存在本地');
+                        setTimeout(() => {
+                            window.location.href = 'index.html';
+                        }, 1500);
                     }
-                })
-                .catch(error => {
-                    console.error('保存价格数据时出错:', error);
-                    showNotification('数据保存失败，请刷新页面后重试', false);
-                });
+                } else {
+                    showNotification('保存失败，请重试', false);
+                    console.error('价格数据保存失败');
+                }
+            } catch (error) {
+                console.error('保存价格数据时出错:', error);
+                showNotification('数据保存失败，请刷新页面后重试', false);
+            }
         });
         });
         </script>

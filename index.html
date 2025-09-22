@@ -705,56 +705,134 @@
         <script src="./test_price_sync.js"></script>
         
         <script type="module">
-        // 页面加载完成后立即尝试从URL哈希同步数据
-        document.addEventListener('DOMContentLoaded', function() {
-            // 立即尝试从URL哈希同步数据
-            if (window.parseDataFromUrlHash) {
-                console.log('页面加载完成，尝试从URL哈希同步最新价格数据...');
-                const hasSynced = window.parseDataFromUrlHash();
-                if (hasSynced) {
-                    console.log('成功从URL哈希同步数据');
-                    // 同步成功后立即刷新价格显示
-                    setTimeout(() => {
-                        const refreshPriceData = window.refreshPriceData || (typeof getLatestPriceData === 'function' ? function() {
-                            try {
-                                const currentPriceElement = document.getElementById('current-price');
-                                const allPriceData = getLatestPriceData();
-                                if (Array.isArray(allPriceData) && allPriceData.length > 0) {
-                                    currentPriceElement.textContent = `¥${allPriceData[0].price} / ตัน (吨)`;
-                                }
-                            } catch (e) { console.error('Error in emergency refresh:', e); }
-                        } : function() {});
-                        refreshPriceData();
-                    }, 300);
-                }
-            }
-            
-            // 设置定期检查URL哈希变化（每2秒一次，与test_price_sync.js保持一致）
-            setInterval(() => {
-                if (window.parseDataFromUrlHash) {
-                    try {
-                        const hasSynced = window.parseDataFromUrlHash();
-                        if (hasSynced) {
-                            console.log('定期检查检测到并应用了新的同步数据');
-                            // 立即刷新价格显示
-                            setTimeout(() => {
-                                const refreshPriceData = window.refreshPriceData || (typeof getLatestPriceData === 'function' ? function() {
-                                    try {
-                                        const currentPriceElement = document.getElementById('current-price');
-                                        const allPriceData = getLatestPriceData();
-                                        if (Array.isArray(allPriceData) && allPriceData.length > 0) {
-                                            currentPriceElement.textContent = `¥${allPriceData[0].price} / ตัน (吨)`;
-                                        }
-                                    } catch (e) { console.error('Error in emergency refresh:', e); }
-                                } : function() {});
-                                refreshPriceData();
-                            }, 300);
-                        }
-                    } catch (error) {
-                        console.warn('定期检查URL哈希时出错:', error);
+        // 从URL哈希同步数据
+        function syncFromUrlHash() {
+            try {
+                if (window.parseDataFromUrlHash && typeof window.parseDataFromUrlHash === 'function') {
+                    const hasSynced = window.parseDataFromUrlHash();
+                    if (hasSynced) {
+                        console.log('成功从URL哈希同步数据');
+                        // 添加一个短暂的延迟，然后刷新价格
+                        setTimeout(() => {
+                            refreshPriceData();
+                        }, 200);
                     }
                 }
-            }, 2000);
+            } catch (error) {
+                console.warn('从URL哈希同步数据失败:', error);
+            }
+        }
+
+        // 强制从URL哈希同步最新数据
+        function forceSyncFromUrlHash() {
+            try {
+                console.log('强制尝试从URL哈希同步最新价格数据...');
+                
+                // 保存当前URL哈希，以便稍后恢复
+                const originalHash = window.location.hash;
+                
+                // 如果URL没有哈希值，尝试添加force=true参数
+                if (!originalHash || !originalHash.includes('force=true')) {
+                    const newHash = originalHash ? 
+                        (originalHash.includes('?') ? 
+                            originalHash + '&force=true' : 
+                            originalHash + '?force=true') : 
+                        '#force=true';
+                    
+                    // 临时设置哈希值以触发强制同步
+                    const tempUrl = window.location.href.split('#')[0] + newHash;
+                    
+                    // 解析强制同步的数据
+                    if (window.parseDataFromUrlHash && typeof window.parseDataFromUrlHash === 'function') {
+                        const hasSynced = window.parseDataFromUrlHash();
+                        if (hasSynced) {
+                            console.log('强制同步成功');
+                            refreshPriceData();
+                        }
+                    }
+                    
+                    // 重要：不实际修改URL，只在内存中处理
+                }
+            } catch (error) {
+                console.error('强制从URL哈希同步数据失败:', error);
+            }
+        }
+
+        // 从共享文件同步数据
+        function syncFromSharedFile() {
+            try {
+                if (window.syncFromSharedFile && typeof window.syncFromSharedFile === 'function') {
+                    console.log('尝试从共享文件同步价格数据...');
+                    window.syncFromSharedFile();
+                }
+            } catch (error) {
+                console.warn('从共享文件同步数据失败:', error);
+            }
+        }
+
+        // 增强版同步策略
+        function setupEnhancedSync() {
+            console.log('初始化增强版价格同步机制...');
+            
+            // 页面加载完成后立即执行多次同步检查
+            syncFromSharedFile();
+            syncFromUrlHash(); // 立即检查URL哈希
+            forceSyncFromUrlHash(); // 强制检查最新同步数据
+            
+            // 前5秒内频繁检查，提高移动端提交后的同步速度
+            let checkCount = 0;
+            const quickCheckTimer = setInterval(() => {
+                checkCount++;
+                console.log(`快速同步检查 #${checkCount}`);
+                forceSyncFromUrlHash(); // 使用强制同步
+                
+                if (checkCount >= 10) { // 前5秒每秒检查2次
+                    clearInterval(quickCheckTimer);
+                    console.log('快速同步检查结束');
+                    
+                    // 后续保持稳定的同步检查频率
+                    startRegularSync();
+                }
+            }, 500);
+        }
+
+        // 启动定期同步机制
+        function startRegularSync() {
+            // 设置定期同步数据（每5秒）
+            const syncTimer = setInterval(() => {
+                syncFromSharedFile();
+                syncFromUrlHash();
+            }, 5000);
+            
+            // 设置强制同步检查（每10秒）
+            const forceSyncTimer = setInterval(forceSyncFromUrlHash, 10000);
+            
+            // 记录到清理函数
+            cleanupFunctions.push(() => {
+                clearInterval(syncTimer);
+                clearInterval(forceSyncTimer);
+            });
+        }
+
+        // 存储需要在页面卸载时清理的函数
+        const cleanupFunctions = [];
+
+        // 初始化增强版同步
+        setupEnhancedSync();
+        
+        // 页面卸载时清理资源
+        window.addEventListener('beforeunload', () => {
+            clearInterval(intervalId);
+            
+            // 执行所有清理函数
+            cleanupFunctions.forEach(fn => {
+                try {
+                    fn();
+                } catch (error) {
+                    console.error('清理资源时出错:', error);
+                }
+            });
+            cleanup();
         });
         </script>
         

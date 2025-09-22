@@ -495,7 +495,7 @@
                 }
             }
 
-            // 从URL哈希同步数据
+            // 从URL哈希同步数据 - 增强版
             function syncFromUrlHash() {
                 try {
                     if (window.parseDataFromUrlHash && typeof window.parseDataFromUrlHash === 'function') {
@@ -511,20 +511,105 @@
                 }
             }
 
-            // 页面加载完成后立即执行一次同步检查
-            syncFromSharedFile();
-            syncFromUrlHash(); // 立即检查URL哈希
+            // 强制从URL哈希同步最新数据
+            function forceSyncFromUrlHash() {
+                try {
+                    console.log('强制尝试从URL哈希同步最新价格数据...');
+                    
+                    // 保存当前URL哈希，以便稍后恢复
+                    const originalHash = window.location.hash;
+                    
+                    // 如果URL没有哈希值，尝试添加force=true参数
+                    if (!originalHash || !originalHash.includes('force=true')) {
+                        const newHash = originalHash ? 
+                            (originalHash.includes('?') ? 
+                                originalHash + '&force=true' : 
+                                originalHash + '?force=true') : 
+                            '#force=true';
+                        
+                        // 临时设置哈希值以触发强制同步
+                        const tempUrl = window.location.href.split('#')[0] + newHash;
+                        
+                        // 解析强制同步的数据
+                        if (window.parseDataFromUrlHash && typeof window.parseDataFromUrlHash === 'function') {
+                            const hasSynced = window.parseDataFromUrlHash();
+                            if (hasSynced) {
+                                console.log('强制同步成功');
+                                handlePriceUpdate();
+                            }
+                        }
+                        
+                        // 重要：不实际修改URL，只在内存中处理
+                    }
+                } catch (error) {
+                    console.error('强制从URL哈希同步数据失败:', error);
+                }
+            }
 
-            // 设置定期同步数据（每10秒）
-            const syncTimer = setInterval(syncFromSharedFile, 10000);
-            // 设置定期检查URL哈希（每2秒一次，与test_price_sync.js保持一致）
-            const urlHashCheckTimer = setInterval(syncFromUrlHash, 2000);
+            // 增强版同步策略
+            function setupEnhancedSync() {
+                console.log('初始化增强版价格同步机制...');
+                
+                // 页面加载完成后立即执行多次同步检查
+                syncFromSharedFile();
+                syncFromUrlHash(); // 立即检查URL哈希
+                forceSyncFromUrlHash(); // 强制检查最新同步数据
+                
+                // 前5秒内频繁检查，提高移动端提交后的同步速度
+                let checkCount = 0;
+                const quickCheckTimer = setInterval(() => {
+                    checkCount++;
+                    console.log(`快速同步检查 #${checkCount}`);
+                    forceSyncFromUrlHash(); // 使用强制同步
+                    
+                    if (checkCount >= 10) { // 前5秒每秒检查2次
+                        clearInterval(quickCheckTimer);
+                        console.log('快速同步检查结束');
+                        
+                        // 后续保持稳定的同步检查频率
+                        startRegularSync();
+                    }
+                }, 500);
+            }
+
+            // 启动定期同步机制
+            function startRegularSync() {
+                // 设置定期同步数据（每5秒）
+                const syncTimer = setInterval(() => {
+                    syncFromSharedFile();
+                    syncFromUrlHash();
+                }, 5000);
+                
+                // 设置强制同步检查（每10秒）
+                const forceSyncTimer = setInterval(forceSyncFromUrlHash, 10000);
+                
+                // 记录到清理函数
+                cleanupFunctions.push(() => {
+                    clearInterval(syncTimer);
+                    clearInterval(forceSyncTimer);
+                });
+            }
+            
+            // 存储需要在页面卸载时清理的函数
+            const cleanupFunctions = [];
+            
+            // 初始化增强版同步
+            setupEnhancedSync();
 
             // 页面卸载时清理所有监听器和计时器
             window.addEventListener('beforeunload', () => {
                 clearInterval(refreshTimer);
-                clearInterval(syncTimer);
-                clearInterval(urlHashCheckTimer);
+                
+                // 执行所有清理函数
+                cleanupFunctions.forEach(fn => {
+                    try {
+                        fn();
+                    } catch (error) {
+                        console.error('清理资源时出错:', error);
+                    }
+                });
+                
+                // 移除事件监听器
                 window.removeEventListener('price-updated', handlePriceUpdate);
                 window.removeEventListener('price-data-saved', handlePriceUpdate);
             });
@@ -552,8 +637,33 @@
             function getPriceData() {
                 try {
                     console.log('获取价格数据...');
+                    
+                    // 获取最后更新时间戳
+                    const lastPriceUpdate = parseInt(localStorage.getItem('lastPriceUpdate') || '0');
+                    const lastSyncTime = parseInt(localStorage.getItem('lastSyncTime') || '0');
+                    const maxTimestamp = Math.max(lastPriceUpdate, lastSyncTime);
+                    
+                    // 检查是否有最近5秒内的更新
+                    const hasRecentUpdate = Date.now() - maxTimestamp < 5000;
+                    if (hasRecentUpdate) {
+                        console.log('检测到最近的价格数据更新，优先使用localStorage数据');
+                        
+                        // 优先从localStorage获取（因为最近有更新）
+                        try {
+                            const storedDataStr = localStorage.getItem('priceData');
+                            if (storedDataStr) {
+                                const storedData = JSON.parse(storedDataStr);
+                                if (Array.isArray(storedData) && storedData.length > 0) {
+                                    console.log('从localStorage获取到最新数据，记录数:', storedData.length);
+                                    return storedData.sort((a, b) => new Date(b.date) - new Date(a.date));
+                                }
+                            }
+                        } catch (localStorageError) {
+                            console.warn('从localStorage读取最新数据失败:', localStorageError);
+                        }
+                    }
 
-                    // 1. 优先尝试使用getLatestPriceData（与data.js同步）
+                    // 1. 尝试使用getLatestPriceData（与data.js同步）
                     try {
                         const allPriceData = getLatestPriceData();
                         console.log('从getLatestPriceData获取到数据，记录数:', allPriceData.length);
@@ -565,7 +675,7 @@
                         console.warn('从getLatestPriceData获取数据失败:', error);
                     }
 
-                    // 2. 尝试从localStorage获取数据（增强的同步支持）
+                    // 2. 从localStorage获取数据
                     let storedData = null;
                     try {
                         const storedDataStr = localStorage.getItem('priceData');
@@ -579,12 +689,6 @@
 
                     // 如果localStorage中有有效数据，使用它
                     if (Array.isArray(storedData) && storedData.length > 0) {
-                        // 检查是否有新的同步数据
-                        const lastSyncTime = parseInt(localStorage.getItem('lastSyncTime') || '0');
-                        const isNewSync = Date.now() - lastSyncTime < 5000;
-                        if (isNewSync) {
-                            console.log('检测到近期的同步数据');
-                        }
                         return storedData.sort((a, b) => new Date(b.date) - new Date(a.date));
                     }
 
