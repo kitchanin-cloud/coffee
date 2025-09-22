@@ -474,8 +474,16 @@
             // 获取价格数据 - 使用data.js中的getLatestPriceData函数
             function getPriceData() {
                 try {
+                    console.log('Attempting to get price data...');
                     const allPriceData = getLatestPriceData();
                     console.log('Total price records:', allPriceData.length);
+                    
+                    // 如果数据为空，使用默认的priceData
+                    if (!Array.isArray(allPriceData) || allPriceData.length === 0) {
+                        console.warn('No data from getLatestPriceData, using default data');
+                        return [...priceData].sort((a, b) => new Date(b.date) - new Date(a.date));
+                    }
+                    
                     return allPriceData;
                 } catch (error) {
                     console.error('Error getting price data:', error);
