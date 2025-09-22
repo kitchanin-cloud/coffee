@@ -5,6 +5,13 @@
 (function() {
     console.log('咖啡价格同步工具已加载 - 支持PC与移动端跨设备同步');
     
+    // 配置项
+    const CONFIG = {
+        SYNC_INTERVAL_MS: 10000, // 同步检查间隔
+        MAX_DATA_ITEMS: 90,      // 最多保留的数据条数
+        URL_DATA_LIMIT: 10       // URL中保留的数据条数
+    };
+    
     // 生成一个唯一的设备ID，用于标识当前设备
     const deviceId = localStorage.getItem('deviceId') || 
                     `device_${Math.random().toString(36).substring(2, 9)}_${Date.now()}`;
@@ -91,17 +98,20 @@
     
     // 模拟跨设备同步
     function simulateCrossDeviceSync() {
-        console.log('执行定时同步检查...');
-        const currentTime = Date.now();
-        lastSyncTime = currentTime;
-        localStorage.setItem('lastSyncTime', lastSyncTime);
-        
-        // 1. 首先尝试从URL哈希同步（更可靠的浏览器间同步方式）
-        const hasSyncedFromHash = parseDataFromUrlHash();
-        
-        // 2. 如果没有从URL哈希同步，则尝试从共享文件同步
-        if (!hasSyncedFromHash) {
-            syncFromSharedFile();
+        try {
+            console.log('执行定时同步检查...');
+            const currentTime = Date.now();
+            localStorage.setItem('lastSyncTime', currentTime.toString());
+            
+            // 优先检查URL哈希中的数据
+            const hasSyncedFromHash = parseDataFromUrlHash();
+            
+            // 如果没有从URL哈希同步，则尝试从共享文件同步
+            if (!hasSyncedFromHash) {
+                syncFromSharedFile();
+            }
+        } catch (error) {
+            console.error('执行同步检查时出错:', error);
         }
     }
     
@@ -137,9 +147,9 @@
                     allPriceData.unshift(priceData);
                 }
                 
-                // 按日期排序并保留最新90条
+                // 按日期排序并保留最新数据
                 allPriceData.sort((a, b) => new Date(b.date) - new Date(a.date));
-                const recentData = allPriceData.slice(0, 90);
+                const recentData = allPriceData.slice(0, CONFIG.MAX_DATA_ITEMS);
                 
                 localStorage.setItem('priceData', JSON.stringify(recentData));
                 saveResult = true;
@@ -167,10 +177,11 @@
                 // 保存到localStorage作为备用
                 localStorage.setItem('testPriceData', JSON.stringify(testSyncData));
                 
-                // 尝试将数据同步到共享文件
-                writeToSharedFile();
+                // 直接调用createOrUpdateSharedDataFile来更新共享数据和URL哈希
+                createOrUpdateSharedDataFile();
                 
-                console.log('价格数据已保存并开始跨设备同步:', testSyncData);
+                console.log('价格数据已保存并开始跨设备同步，同步URL已生成');
+                console.log('在控制台输入 getSyncUrl() 可以获取完整的同步URL');
             }
             
             return saveResult;
@@ -202,27 +213,39 @@
             
             localStorage.setItem('sharedPriceDataBackup', JSON.stringify(sharedData));
             
-            // 2. 使用URL哈希作为数据同步机制（适合手动分享）
+            // 2. 使用URL哈希作为主要数据同步机制
             // 限制数据大小，避免URL过长
             const miniData = {
                 t: timestamp, // 时间戳
-                d: allPriceData.slice(0, 10) // 只保留最新10条数据
+                d: allPriceData.slice(0, CONFIG.URL_DATA_LIMIT) // 只保留最新数据
             };
             
             // 将数据编码为base64并添加到URL哈希中
             const encodedData = btoa(JSON.stringify(miniData));
             
+            // 保存到历史记录中的同步数据，用于跟踪变化
+            const syncHistory = JSON.parse(localStorage.getItem('syncHistory') || '[]');
+            syncHistory.push({
+                timestamp: timestamp,
+                hashedData: encodedData
+            });
+            
+            // 只保留最近5条同步历史
+            localStorage.setItem('syncHistory', JSON.stringify(syncHistory.slice(-5)));
+            
             // 仅在数据变化时更新URL，避免不必要的历史记录
             if (window.location.hash !== '#' + encodedData) {
-                window.location.hash = encodedData;
+                // 使用replaceState避免创建新的历史记录
+                window.history.replaceState({}, document.title, '#' + encodedData);
             }
             
-            console.log('共享数据已更新到localStorage和URL哈希中。其他设备可以通过刷新页面获取最新数据。');
+            console.log('共享数据已更新到localStorage和URL哈希中。其他设备可以通过复制并打开此URL获取最新数据。');
             
-            // 3. 在控制台显示可复制的代码片段，方便手动更新test_price_data.js
-            console.log('\n===== 手动更新共享文件 =====');
-            console.log('如果您有权限编辑服务器文件，请将以下内容复制到test_price_data.js:');
-            console.log(`window.sharedPriceData = ${JSON.stringify(sharedData, null, 2)};`);
+            // 3. 在控制台显示可复制的同步URL，方便用户手动分享
+            console.log('\n===== 跨设备同步URL =====');
+            const syncUrl = window.location.origin + window.location.pathname + '#' + encodedData;
+            console.log('复制以下URL到其他设备打开，即可同步数据:');
+            console.log(syncUrl);
             console.log('==============================');
             
             // 4. 尝试更新全局sharedPriceData对象（如果存在）
@@ -232,6 +255,14 @@
             
             // 5. 更新同步状态
             localStorage.setItem('lastSyncTime', timestamp.toString());
+            
+            // 6. 触发同步完成事件
+            window.dispatchEvent(new CustomEvent('sync-completed', {
+                detail: {
+                    timestamp: timestamp,
+                    syncUrl: syncUrl
+                }
+            }));
         } catch (error) {
             console.error('更新共享数据时出错:', error);
         }
@@ -242,14 +273,26 @@
         try {
             const hash = window.location.hash.substring(1); // 移除#符号
             if (hash && hash.length > 10) { // 简单检查确保哈希可能包含数据
-                const decodedData = JSON.parse(atob(hash));
+                // 尝试解码数据
+                let decodedData;
+                try {
+                    decodedData = JSON.parse(atob(hash));
+                } catch (decodeError) {
+                    console.warn('URL哈希格式错误，无法解码:', decodeError);
+                    return false;
+                }
                 
-                if (decodedData.t && decodedData.d) {
+                // 严格验证数据格式
+                if (decodedData && decodedData.t && decodedData.d && Array.isArray(decodedData.d)) {
+                    const urlTimestamp = parseInt(decodedData.t);
                     const localLastUpdate = parseInt(localStorage.getItem('lastPriceUpdate') || '0');
                     
-                    // 如果URL中的数据比本地数据更新，则同步
-                    if (decodedData.t > localLastUpdate) {
-                        console.log('发现URL中的更新数据，正在同步...');
+                    console.log(`URL数据时间戳: ${urlTimestamp}, 本地数据时间戳: ${localLastUpdate}`);
+                    
+                    // 如果URL中的数据比本地数据更新，或者用户强制同步（URL中有force=true参数）
+                    const forceSync = new URLSearchParams(window.location.search).get('force') === 'true';
+                    if (forceSync || urlTimestamp > localLastUpdate) {
+                        console.log(`${forceSync ? '强制同步' : '发现更新的URL数据'}, 正在同步...`);
                         
                         // 合并URL数据与本地数据（避免丢失历史记录）
                         const localData = JSON.parse(localStorage.getItem('priceData') || '[]');
@@ -275,22 +318,30 @@
                         const mergedData = Array.from(dataMap.values());
                         mergedData.sort((a, b) => new Date(b.date) - new Date(a.date));
                         
-                        // 保留最新90条数据
-                        const recentData = mergedData.slice(0, 90);
+                        // 保留最新数据
+                        const recentData = mergedData.slice(0, CONFIG.MAX_DATA_ITEMS);
                         
                         localStorage.setItem('priceData', JSON.stringify(recentData));
-                        localStorage.setItem('lastPriceUpdate', decodedData.t.toString());
+                        localStorage.setItem('lastPriceUpdate', urlTimestamp.toString());
                         
                         // 更新同步状态
-                        localStorage.setItem('lastSyncTime', Date.now().toString());
+                        const currentTime = Date.now();
+                        localStorage.setItem('lastSyncTime', currentTime.toString());
                         
                         // 触发价格更新事件
                         window.dispatchEvent(new CustomEvent('price-updated', {
-                            detail: { data: recentData }
+                            detail: { 
+                                data: recentData,
+                                source: 'url-hash'
+                            }
                         }));
                         
                         return true;
+                    } else {
+                        console.log('URL数据与本地数据相同或更旧，跳过同步');
                     }
+                } else {
+                    console.warn('URL哈希中包含无效的数据格式');
                 }
             }
         } catch (error) {
@@ -303,13 +354,24 @@
     function init() {
         console.log('跨设备价格同步工具初始化中...');
         
-        // 检查URL哈希中的数据
+        // 立即检查URL哈希中的数据（最高优先级）
         const hasSyncedFromHash = parseDataFromUrlHash();
         
-        // 如果没有从URL哈希同步数据，则尝试从共享文件同步
-        if (!hasSyncedFromHash) {
-            syncFromSharedFile();
-        }
+        // 输出初始化信息
+        console.log('\n===== 跨设备同步工具使用说明 =====');
+        console.log('1. 当您在一个设备上更新价格后，URL会自动生成同步哈希');
+        console.log('2. 将此URL复制到其他设备打开，即可自动同步数据');
+        console.log('3. 在控制台可使用以下辅助函数:');
+        console.log('   - getSyncUrl(): 获取包含最新数据的同步URL');
+        console.log('   - getSyncStatus(): 查看当前同步状态');
+        console.log('   - parseDataFromUrlHash(): 立即从URL哈希同步数据');
+        console.log('   - simulateCrossDeviceSync(): 模拟跨设备同步');
+        console.log('==================================\n');
+        
+        // 设置定时器，定期检查同步状态（每10秒）
+        setInterval(function() {
+            simulateCrossDeviceSync();
+        }, CONFIG.SYNC_INTERVAL_MS);
         
         // 监听需要更新共享文件的事件
         window.addEventListener('need-update-shared-file', function() {
@@ -331,7 +393,7 @@
         window.createOrUpdateSharedDataFile = createOrUpdateSharedDataFile;
         window.parseDataFromUrlHash = parseDataFromUrlHash;
         
-        // 添加辅助函数
+        // 添加辅助函数 - 增强版同步状态
         window.getSyncStatus = function() {
             const lastSyncTime = localStorage.getItem('lastSyncTime');
             const lastPriceUpdate = localStorage.getItem('lastPriceUpdate');
@@ -342,42 +404,38 @@
                 lastSyncTime: lastSyncTime ? new Date(parseInt(lastSyncTime)).toLocaleString() : '从未',
                 lastPriceUpdate: lastPriceUpdate ? new Date(parseInt(lastPriceUpdate)).toLocaleString() : '从未',
                 hasHashData: hasHashData,
-                deviceId: deviceId
+                deviceId: deviceId,
+                syncUrl: window.getSyncUrl()
             };
         };
         
+        // 增强版同步URL生成函数
         window.getSyncUrl = function() {
-            const currentUrl = window.location.href;
-            // 提取基础URL和哈希部分
-            const hashIndex = currentUrl.indexOf('#');
-            let baseUrl = currentUrl;
-            let hash = '';
-            
-            if (hashIndex >= 0) {
-                baseUrl = currentUrl.substring(0, hashIndex);
-                hash = currentUrl.substring(hashIndex);
+            try {
+                // 获取基础URL
+                const baseUrl = window.location.origin + window.location.pathname;
+                
+                // 尝试获取最新的同步数据
+                const allPriceData = JSON.parse(localStorage.getItem('priceData') || '[]');
+                const timestamp = Date.now();
+                
+                // 构造精简数据
+                const miniData = {
+                    t: timestamp,
+                    d: allPriceData.slice(0, CONFIG.URL_DATA_LIMIT)
+                };
+                
+                // 编码数据
+                const encodedData = btoa(JSON.stringify(miniData));
+                
+                // 生成最终同步URL
+                const syncUrl = baseUrl + '#' + encodedData;
+                
+                return syncUrl;
+            } catch (error) {
+                console.error('生成同步URL时出错:', error);
+                return window.location.href;
             }
-            
-            // 确保包含最新的同步数据哈希
-            const sharedDataBackup = localStorage.getItem('sharedPriceDataBackup');
-            if (sharedDataBackup) {
-                try {
-                    const sharedData = JSON.parse(sharedDataBackup);
-                    const miniData = {
-                        t: sharedData.timestamp,
-                        d: sharedData.data.slice(0, 10)
-                    };
-                    const encodedData = btoa(JSON.stringify(miniData));
-                    
-                    if (encodedData) {
-                        return baseUrl + '#' + encodedData;
-                    }
-                } catch (error) {
-                    console.error('生成同步URL时出错:', error);
-                }
-            }
-            
-            return currentUrl;
         };
         
         console.log('跨设备价格同步工具初始化完成!');
