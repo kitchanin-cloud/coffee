@@ -285,12 +285,18 @@
         <p>&copy; 2025 咖啡豆公司 - 管理后台</p>
     </footer>
 
-    <!-- 引入跨设备价格同步工具 -->
+        <script type="module">
+        // 从数据文件导入价格数据和函数
+        import { priceData, savePriceData } from './data.js';
+        
+        // 将savePriceData函数暴露给全局作用域，以便跨设备同步工具可以访问
+        window.savePriceData = savePriceData;
+        </script>
+        
+        <!-- 引入跨设备价格同步工具 -->
         <script src="./test_price_sync.js"></script>
         
         <script type="module">
-        // 从数据文件导入价格数据
-        import { priceData } from './data.js';
 
         document.addEventListener('DOMContentLoaded', () => {
             const priceForm = document.getElementById('price-form');
