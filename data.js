@@ -82,25 +82,16 @@ export function savePriceData(newPrice) {
     } else {
       // 添加新记录到数组开头
       allPriceData.unshift(newPrice);
-      
-      // 当数据总数达到91天时，保留最新的90条数据
-      // 这样第91天的新数据会覆盖最早的第一天数据
-      if (allPriceData.length > 90) {
-        // 按日期降序排序
-        allPriceData.sort((a, b) => new Date(b.date) - new Date(a.date));
-        // 只保留最新的90条数据
-        const recentData = allPriceData.slice(0, 90);
-        // 保存到localStorage
-        localStorage.setItem('priceData', JSON.stringify(recentData));
-        return true;
-      }
     }
     
     // 按日期降序排序
     allPriceData.sort((a, b) => new Date(b.date) - new Date(a.date));
     
+    // 只保留最新的90条数据
+    const recentData = allPriceData.slice(0, 90);
+    
     // 保存到localStorage
-    localStorage.setItem('priceData', JSON.stringify(allPriceData));
+    localStorage.setItem('priceData', JSON.stringify(recentData));
     
     return true;
   } catch (error) {
