@@ -375,7 +375,7 @@
 
     <script type="module">
         // 从数据文件导入价格数据
-        import { priceData, getLatestPriceData } from './data.js';
+        import { priceData, getLatestPriceData, listenForPriceUpdates } from './data.js';
 
         document.addEventListener('DOMContentLoaded', () => {
             // 更新当前价格显示
@@ -411,7 +411,21 @@
             // 为PC端设置更频繁的自动刷新（每30秒）
             // 移动端由于交互更频繁，刷新间隔可以更长
             const refreshInterval = isMobile ? 60000 : 30000;
-            setInterval(refreshPriceData, refreshInterval);
+            const intervalId = setInterval(refreshPriceData, refreshInterval);
+            
+            // 监听价格数据更新广播
+            const cleanupListener = listenForPriceUpdates((updatedData) => {
+                console.log('Price data updated, refreshing display...');
+                refreshPriceData();
+            });
+            
+            // 页面卸载时清理资源
+            window.addEventListener('beforeunload', () => {
+                clearInterval(intervalId);
+                if (cleanupListener) {
+                    cleanupListener();
+                }
+            });
 
             const contactBtn = document.getElementById('contact-btn');
             const contactModal = document.getElementById('contact-modal');

@@ -425,7 +425,7 @@
 
     <script type="module">
         // 从数据文件导入价格数据
-        import { priceData, getLatestPriceData } from './data.js';
+        import { priceData, getLatestPriceData, listenForPriceUpdates } from './data.js';
 
         document.addEventListener('DOMContentLoaded', () => {
             const tableBody = document.getElementById('history-data-body');
@@ -451,6 +451,19 @@
             // 页面卸载时清除计时器
             window.addEventListener('beforeunload', () => {
                 clearInterval(refreshTimer);
+            });
+            
+            // 监听价格数据更新广播
+            const cleanupListener = listenForPriceUpdates((updatedData) => {
+                console.log('Price data updated, refreshing history display...');
+                renderPage(currentPage);
+            });
+            
+            // 页面卸载时清理监听器
+            window.addEventListener('beforeunload', () => {
+                if (cleanupListener) {
+                    cleanupListener();
+                }
             });
 
             // 动态计算总页数

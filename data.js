@@ -67,6 +67,16 @@ export function getLatestPriceData() {
   }
 }
 
+// 创建BroadcastChannel用于页面间通信
+let priceChannel;
+
+// 初始化BroadcastChannel
+function initPriceChannel() {
+  if (!priceChannel && typeof BroadcastChannel !== 'undefined') {
+    priceChannel = new BroadcastChannel('coffee-price-channel');
+  }
+}
+
 // 保存新的价格数据
 export function savePriceData(newPrice) {
   try {
@@ -93,11 +103,37 @@ export function savePriceData(newPrice) {
     // 保存到localStorage
     localStorage.setItem('priceData', JSON.stringify(recentData));
     
+    // 发送广播通知其他页面数据已更新
+    initPriceChannel();
+    if (priceChannel) {
+      priceChannel.postMessage({ type: 'price-updated', data: recentData });
+    }
+    
     return true;
   } catch (error) {
     console.error('Error saving price data:', error);
     return false;
   }
+}
+
+// 监听价格数据更新通知
+export function listenForPriceUpdates(callback) {
+  initPriceChannel();
+  if (priceChannel) {
+    priceChannel.addEventListener('message', (event) => {
+      if (event.data.type === 'price-updated') {
+        callback(event.data.data);
+      }
+    });
+  }
+  
+  // 清理函数
+  return function cleanup() {
+    if (priceChannel) {
+      priceChannel.close();
+      priceChannel = null;
+    }
+  };
 }
 
 // 辅助函数：保留最新的90条价格数据
