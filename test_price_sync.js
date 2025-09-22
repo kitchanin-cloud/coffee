@@ -160,57 +160,55 @@
             // 首先尝试调用data.js中的savePriceData函数（如果可用）
             let saveResult = false;
             if (typeof savePriceData === 'function') {
-                // 确保savePriceData是Promise
-                const savePromise = Promise.resolve(savePriceData(newPriceData));
+                try {
+                // 同步调用savePriceData
+                saveResult = savePriceData(newPriceData);
+                console.log('调用原始savePriceData结果:', saveResult);
                 
-                return savePromise.then(result => {
-                    saveResult = result;
-                    console.log('调用原始savePriceData结果:', saveResult);
+                if (saveResult) {
+                    // 更新URL哈希以同步到其他设备
+                    const timestamp = Date.now();
+                    localStorage.setItem('lastPriceUpdate', timestamp.toString());
+                    localStorage.setItem('lastSyncTime', timestamp.toString());
                     
-                    if (saveResult) {
-                        // 更新URL哈希以同步到其他设备
-                        const timestamp = Date.now();
-                        localStorage.setItem('lastPriceUpdate', timestamp.toString());
-                        localStorage.setItem('lastSyncTime', timestamp.toString());
-                        
-                        // 重新获取所有价格数据（包括最新保存的）
-                        const allPriceData = JSON.parse(localStorage.getItem('priceData') || '[]');
-                        
-                        // 创建用于URL的精简数据（包含足够的历史记录）
-                        const syncData = {
-                            t: timestamp, // 时间戳
-                            d: allPriceData.slice(0, CONFIG.URL_DATA_LIMIT), // 只保留最新数据
-                            v: 4, // 更新版本号为4
-                            sourceDevice: deviceType // 添加设备类型信息
-                        };
-                        
-                        // 将数据编码为base64并添加到URL哈希中
-                        const encodedData = btoa(JSON.stringify(syncData));
-                        
-                        // 更新URL哈希，但不创建新的历史记录
-                        const newHash = '#' + encodedData;
-                        if (window.location.hash !== newHash) {
-                            window.history.replaceState({}, document.title, newHash);
-                            console.log('URL哈希已更新，包含最新价格数据');
-                        }
-                        
-                        // 触发价格更新事件
-                        window.dispatchEvent(new CustomEvent('price-updated', {
-                            detail: {
-                                data: allPriceData,
-                                source: 'save-and-sync',
-                                syncId: newPriceData.syncId
-                            }
-                        }));
-                        
-                        console.log('价格数据已保存并同步，可通过URL在设备间共享');
+                    // 重新获取所有价格数据（包括最新保存的）
+                    const allPriceData = JSON.parse(localStorage.getItem('priceData') || '[]');
+                    
+                    // 创建用于URL的精简数据（包含足够的历史记录）
+                    const syncData = {
+                        t: timestamp, // 时间戳
+                        d: allPriceData.slice(0, CONFIG.URL_DATA_LIMIT), // 只保留最新数据
+                        v: 5, // 更新版本号为5以强制重新同步
+                        sourceDevice: deviceType // 添加设备类型信息
+                    };
+                    
+                    // 将数据编码为base64并添加到URL哈希中
+                    const encodedData = btoa(JSON.stringify(syncData));
+                    
+                    // 更新URL哈希，但不创建新的历史记录
+                    const newHash = '#' + encodedData;
+                    if (window.location.hash !== newHash) {
+                        window.history.replaceState({}, document.title, newHash);
+                        console.log('URL哈希已更新，包含最新价格数据');
                     }
                     
-                    return saveResult;
-                }).catch(error => {
-                    console.error('保存价格数据Promise出错:', error);
-                    return false;
-                });
+                    // 触发价格更新事件
+                    window.dispatchEvent(new CustomEvent('price-updated', {
+                        detail: {
+                            data: allPriceData,
+                            source: 'save-and-sync',
+                            syncId: newPriceData.syncId
+                        }
+                    }));
+                    
+                    console.log('价格数据已保存并同步，可通过URL在设备间共享');
+                }
+                
+                return saveResult;
+            } catch (error) {
+                console.error('保存价格数据出错:', error);
+                return false;
+            }
             } else {
                 console.warn('无法访问原始的savePriceData函数，使用替代保存方案');
                 

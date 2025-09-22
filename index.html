@@ -493,19 +493,71 @@
             const refreshInterval = isMobile ? 15000 : 5000;
             const intervalId = setInterval(refreshPriceData, refreshInterval);
             
-            // 增加URL哈希同步检查，每1秒检查一次
+            // 增强的URL哈希同步检查机制
             if (window.parseDataFromUrlHash) {
-                setInterval(function() {
+                // 立即执行一次检查
+                checkAndSyncFromHash();
+                
+                // 更积极的定时检查：前5秒每500毫秒检查一次，之后每1秒检查一次
+                let checkInterval = 500; // 初始检查间隔
+                let checkCount = 0;
+                const maxFastChecks = 10; // 快速检查次数
+                
+                const hashCheckInterval = setInterval(function() {
+                    checkAndSyncFromHash();
+                    
+                    // 调整检查间隔
+                    checkCount++;
+                    if (checkCount >= maxFastChecks) {
+                        clearInterval(hashCheckInterval);
+                        // 5秒后切换到1秒间隔
+                        setInterval(checkAndSyncFromHash, 1000);
+                    }
+                }, checkInterval);
+                
+                // 专用的检查函数
+                function checkAndSyncFromHash() {
                     try {
-                        const hashSynced = window.parseDataFromUrlHash();
-                        if (hashSynced) {
-                            console.log('定期检查发现URL哈希更新，刷新价格数据');
-                            refreshPriceData();
+                        // 强制同步最新版本（5）的数据
+                        const oldForceParam = new URLSearchParams(window.location.search).get('force');
+                        if (oldForceParam !== 'true') {
+                            // 临时设置force=true以确保获取最新数据
+                            const tempSearchParams = new URLSearchParams(window.location.search);
+                            tempSearchParams.set('force', 'true');
+                            const tempUrl = new URL(window.location);
+                            tempUrl.search = tempSearchParams.toString();
+                            
+                            // 记录当前URL以便恢复
+                            const currentUrl = window.location.href;
+                            
+                            // 临时更改URL以触发强制同步
+                            window.history.replaceState({}, document.title, tempUrl.href);
+                            
+                            // 执行同步检查
+                            const hashSynced = window.parseDataFromUrlHash();
+                            
+                            // 恢复原始URL
+                            window.history.replaceState({}, document.title, currentUrl);
+                            
+                            if (hashSynced) {
+                                console.log('URL哈希同步成功，刷新价格数据');
+                                refreshPriceData();
+                                return true;
+                            }
+                        } else {
+                            // 已经是强制同步模式
+                            const hashSynced = window.parseDataFromUrlHash();
+                            if (hashSynced) {
+                                console.log('强制模式下URL哈希同步成功，刷新价格数据');
+                                refreshPriceData();
+                                return true;
+                            }
                         }
                     } catch (error) {
                         console.warn('URL哈希同步检查出错:', error);
                     }
-                }, 1000); // 每1秒检查一次，提高响应速度
+                    return false;
+                }
             }
             
             // 页面卸载时清理资源
