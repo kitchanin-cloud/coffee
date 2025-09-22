@@ -102,7 +102,7 @@ function initPriceChannel() {
   }
 }
 
-// 保存新的价格数据
+// 保存新的价格数据 - 增强版，更好地支持跨设备同步
 export function savePriceData(newPrice) {
   try {
     console.log('Attempting to save price data:', newPrice);
@@ -119,17 +119,41 @@ export function savePriceData(newPrice) {
     // 创建数据的深拷贝以避免修改原始数据
     const updatedData = [...allPriceData];
     
+    // 检测是否为移动设备
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    const deviceType = isMobile ? 'mobile' : 'desktop';
+    
+    // 确保价格数据包含必要的同步字段
+    const enhancedPriceData = {
+      ...newPrice,
+      timestamp: newPrice.timestamp || Date.now(),
+      sourceDevice: newPrice.sourceDevice || deviceType,
+      syncId: newPrice.syncId || `sync_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    };
+    
     // 检查是否已有今天的记录
-    const todayIndex = updatedData.findIndex(item => item && item.date === newPrice.date);
+    const todayIndex = updatedData.findIndex(item => item && item.date === enhancedPriceData.date);
     
     if (todayIndex >= 0) {
-      // 更新现有记录
-      updatedData[todayIndex] = { ...newPrice };
-      console.log('Updated existing record for date:', newPrice.date);
+      // 更新现有记录 - 检查是否真的需要更新
+      const currentRecord = updatedData[todayIndex];
+      const currentTimestamp = parseInt(currentRecord.timestamp || '0');
+      const newTimestamp = parseInt(enhancedPriceData.timestamp);
+      
+      // 只在新数据更新或来源更可靠时才更新
+      if (newTimestamp > currentTimestamp || 
+          (newTimestamp === currentTimestamp && enhancedPriceData.sourceDevice === 'mobile')) {
+        updatedData[todayIndex] = enhancedPriceData;
+        console.log('Updated existing record for date:', enhancedPriceData.date, 'with newer data');
+      } else {
+        console.log('Skipping update - existing record is newer or equally recent');
+        // 如果数据没有变化，仍返回true表示保存成功
+        return true;
+      }
     } else {
       // 添加新记录到数组开头
-      updatedData.unshift({ ...newPrice });
-      console.log('Added new record for date:', newPrice.date);
+      updatedData.unshift(enhancedPriceData);
+      console.log('Added new record for date:', enhancedPriceData.date);
     }
     
     // 按日期降序排序
@@ -142,17 +166,36 @@ export function savePriceData(newPrice) {
     // 保存到localStorage
     try {
       localStorage.setItem('priceData', JSON.stringify(recentData));
-      console.log('Price data successfully saved to localStorage');
+      // 存储最后更新时间戳，用于跨设备同步比较
+      localStorage.setItem('lastPriceUpdate', Date.now().toString());
+      console.log('Price data successfully saved to localStorage with sync timestamp');
     } catch (storageError) {
       console.error('Error saving to localStorage:', storageError);
       // 即使localStorage保存失败，我们仍然尝试广播数据
     }
     
-    // 发送广播通知其他页面数据已更新
+    // 发送广播通知同一浏览器的其他页面数据已更新
     initPriceChannel();
     if (priceChannel) {
-      priceChannel.postMessage({ type: 'price-updated', data: recentData });
-      console.log('Price update broadcast sent');
+      priceChannel.postMessage({ 
+        type: 'price-updated', 
+        data: recentData,
+        syncId: enhancedPriceData.syncId,
+        sourceDevice: enhancedPriceData.sourceDevice
+      });
+      console.log('Price update broadcast sent with sync info');
+    }
+    
+    // 触发全局自定义事件，便于其他脚本监听价格更新
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('price-data-saved', {
+        detail: {
+          data: recentData,
+          syncId: enhancedPriceData.syncId,
+          sourceDevice: enhancedPriceData.sourceDevice
+        }
+      }));
+      console.log('Price data saved event dispatched');
     }
     
     return true;

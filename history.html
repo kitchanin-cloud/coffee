@@ -471,8 +471,17 @@
                 }, 300);
             }
 
-            // 添加对自定义price-updated事件的监听
+            // 添加对多种同步相关事件的监听
             window.addEventListener('price-updated', handlePriceUpdate);
+            window.addEventListener('price-data-saved', handlePriceUpdate); // 来自data.js的事件
+
+            // 监听存储事件，以便在同一设备的不同标签页之间同步
+            window.addEventListener('storage', function(event) {
+                if (event.key === 'priceData' || event.key === 'lastPriceUpdate' || event.key === 'lastSyncTime') {
+                    console.log('检测到localStorage变化，刷新历史价格数据...');
+                    handlePriceUpdate();
+                }
+            });
 
             // 从共享文件同步数据
             function syncFromSharedFile() {
@@ -486,17 +495,38 @@
                 }
             }
 
+            // 从URL哈希同步数据
+            function syncFromUrlHash() {
+                try {
+                    if (window.parseDataFromUrlHash && typeof window.parseDataFromUrlHash === 'function') {
+                        console.log('尝试从URL哈希同步价格数据...');
+                        const hasSynced = window.parseDataFromUrlHash();
+                        if (hasSynced) {
+                            console.log('成功从URL哈希同步数据');
+                            handlePriceUpdate();
+                        }
+                    }
+                } catch (error) {
+                    console.warn('从URL哈希同步数据失败:', error);
+                }
+            }
+
             // 页面加载完成后立即执行一次同步检查
             syncFromSharedFile();
+            syncFromUrlHash(); // 立即检查URL哈希
 
             // 设置定期同步数据（每10秒）
             const syncTimer = setInterval(syncFromSharedFile, 10000);
+            // 设置定期检查URL哈希（每2秒一次，与test_price_sync.js保持一致）
+            const urlHashCheckTimer = setInterval(syncFromUrlHash, 2000);
 
             // 页面卸载时清理所有监听器和计时器
             window.addEventListener('beforeunload', () => {
                 clearInterval(refreshTimer);
                 clearInterval(syncTimer);
+                clearInterval(urlHashCheckTimer);
                 window.removeEventListener('price-updated', handlePriceUpdate);
+                window.removeEventListener('price-data-saved', handlePriceUpdate);
             });
 
             // 动态计算总页数
@@ -518,26 +548,24 @@
                 { date: '2025-08-21', price: '58432' }
             ];
 
-            // 获取价格数据 - 优化的跨设备同步方案
+            // 获取价格数据 - 增强的跨设备同步方案
             function getPriceData() {
                 try {
                     console.log('获取价格数据...');
 
-                    // 1. 优先尝试从共享文件获取最新数据
-                    let sharedData = null;
+                    // 1. 优先尝试使用getLatestPriceData（与data.js同步）
                     try {
-                        if (window.getSharedPriceData && typeof window.getSharedPriceData === 'function') {
-                            sharedData = window.getSharedPriceData();
-                            if (Array.isArray(sharedData) && sharedData.length > 0) {
-                                console.log('从共享文件获取到最新数据，记录数:', sharedData.length);
-                                return sharedData.sort((a, b) => new Date(b.date) - new Date(a.date));
-                            }
+                        const allPriceData = getLatestPriceData();
+                        console.log('从getLatestPriceData获取到数据，记录数:', allPriceData.length);
+
+                        if (Array.isArray(allPriceData) && allPriceData.length > 0) {
+                            return allPriceData.sort((a, b) => new Date(b.date) - new Date(a.date));
                         }
-                    } catch (sharedFileError) {
-                        console.warn('从共享文件读取数据失败:', sharedFileError);
+                    } catch (error) {
+                        console.warn('从getLatestPriceData获取数据失败:', error);
                     }
 
-                    // 2. 尝试从localStorage获取数据
+                    // 2. 尝试从localStorage获取数据（增强的同步支持）
                     let storedData = null;
                     try {
                         const storedDataStr = localStorage.getItem('priceData');
@@ -551,19 +579,27 @@
 
                     // 如果localStorage中有有效数据，使用它
                     if (Array.isArray(storedData) && storedData.length > 0) {
+                        // 检查是否有新的同步数据
+                        const lastSyncTime = parseInt(localStorage.getItem('lastSyncTime') || '0');
+                        const isNewSync = Date.now() - lastSyncTime < 5000;
+                        if (isNewSync) {
+                            console.log('检测到近期的同步数据');
+                        }
                         return storedData.sort((a, b) => new Date(b.date) - new Date(a.date));
                     }
 
-                    // 3. 尝试使用getLatestPriceData
+                    // 3. 尝试从共享文件获取最新数据
+                    let sharedData = null;
                     try {
-                        const allPriceData = getLatestPriceData();
-                        console.log('从getLatestPriceData获取到数据，记录数:', allPriceData.length);
-
-                        if (Array.isArray(allPriceData) && allPriceData.length > 0) {
-                            return allPriceData.sort((a, b) => new Date(b.date) - new Date(a.date));
+                        if (window.getSharedPriceData && typeof window.getSharedPriceData === 'function') {
+                            sharedData = window.getSharedPriceData();
+                            if (Array.isArray(sharedData) && sharedData.length > 0) {
+                                console.log('从共享文件获取到最新数据，记录数:', sharedData.length);
+                                return sharedData.sort((a, b) => new Date(b.date) - new Date(a.date));
+                            }
                         }
-                    } catch (error) {
-                        console.warn('从getLatestPriceData获取数据失败:', error);
+                    } catch (sharedFileError) {
+                        console.warn('从共享文件读取数据失败:', sharedFileError);
                     }
 
                     // 4. 最后回退到使用基础数据

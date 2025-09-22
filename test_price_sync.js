@@ -8,8 +8,8 @@
     // 配置项
     const CONFIG = {
         URL_DATA_LIMIT: 30,      // URL中保留的数据条数
-        SYNC_CHECK_INTERVAL: 3000, // 同步检查间隔（毫秒）- 缩短至3秒提高实时性
-        DATA_EXPIRY_TIME: 30 * 60 * 1000 // 数据过期时间（30分钟）
+        SYNC_CHECK_INTERVAL: 2000, // 同步检查间隔（毫秒）- 进一步缩短至2秒提高实时性
+        DATA_EXPIRY_TIME: 60 * 60 * 1000 // 数据过期时间（1小时）
     };
     
     // 生成唯一同步ID
@@ -78,7 +78,9 @@
                         const validItem = {
                             date: item.date,
                             price: item.price || '0',
-                            syncId: item.syncId || generateSyncId()
+                            syncId: item.syncId || generateSyncId(),
+                            sourceDevice: item.sourceDevice || 'unknown',
+                            timestamp: item.timestamp || Date.now()
                         };
                         dataMap.set(item.date, validItem);
                     }
@@ -135,13 +137,20 @@
             // 获取当前日期和时间
             const currentDate = new Date().toISOString().split('T')[0];
             const fullTimestamp = new Date().toISOString();
+            const timestamp = Date.now();
+            
+            // 检测是否为移动设备
+            const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+            const deviceType = isMobile ? 'mobile' : 'desktop';
             
             // 构造新的价格数据对象
             const newPriceData = {
                 date: currentDate,
                 fullTimestamp: fullTimestamp,
+                timestamp: timestamp,
                 price: priceData.price.toString(),
                 syncId: generateSyncId(),
+                sourceDevice: deviceType,
                 currency: priceData.currency || 'CNY',
                 unit: priceData.unit || '吨'
             };
@@ -151,8 +160,57 @@
             // 首先尝试调用data.js中的savePriceData函数（如果可用）
             let saveResult = false;
             if (typeof savePriceData === 'function') {
-                saveResult = savePriceData(newPriceData);
-                console.log('调用原始savePriceData结果:', saveResult);
+                // 确保savePriceData是Promise
+                const savePromise = Promise.resolve(savePriceData(newPriceData));
+                
+                return savePromise.then(result => {
+                    saveResult = result;
+                    console.log('调用原始savePriceData结果:', saveResult);
+                    
+                    if (saveResult) {
+                        // 更新URL哈希以同步到其他设备
+                        const timestamp = Date.now();
+                        localStorage.setItem('lastPriceUpdate', timestamp.toString());
+                        localStorage.setItem('lastSyncTime', timestamp.toString());
+                        
+                        // 重新获取所有价格数据（包括最新保存的）
+                        const allPriceData = JSON.parse(localStorage.getItem('priceData') || '[]');
+                        
+                        // 创建用于URL的精简数据（包含足够的历史记录）
+                        const syncData = {
+                            t: timestamp, // 时间戳
+                            d: allPriceData.slice(0, CONFIG.URL_DATA_LIMIT), // 只保留最新数据
+                            v: 3, // 更新版本号
+                            sourceDevice: deviceType // 添加设备类型信息
+                        };
+                        
+                        // 将数据编码为base64并添加到URL哈希中
+                        const encodedData = btoa(JSON.stringify(syncData));
+                        
+                        // 更新URL哈希，但不创建新的历史记录
+                        const newHash = '#' + encodedData;
+                        if (window.location.hash !== newHash) {
+                            window.history.replaceState({}, document.title, newHash);
+                            console.log('URL哈希已更新，包含最新价格数据');
+                        }
+                        
+                        // 触发价格更新事件
+                        window.dispatchEvent(new CustomEvent('price-updated', {
+                            detail: {
+                                data: allPriceData,
+                                source: 'save-and-sync',
+                                syncId: newPriceData.syncId
+                            }
+                        }));
+                        
+                        console.log('价格数据已保存并同步，可通过URL在设备间共享');
+                    }
+                    
+                    return saveResult;
+                }).catch(error => {
+                    console.error('保存价格数据Promise出错:', error);
+                    return false;
+                });
             } else {
                 console.warn('无法访问原始的savePriceData函数，使用替代保存方案');
                 
@@ -170,33 +228,24 @@
                 allPriceData.sort((a, b) => new Date(b.date) - new Date(a.date));
                 
                 localStorage.setItem('priceData', JSON.stringify(allPriceData));
-                saveResult = true;
-            }
-            
-            // 如果保存成功，更新URL哈希以同步到其他设备
-            if (saveResult) {
+                
+                // 更新URL哈希以同步到其他设备
                 const timestamp = Date.now();
                 localStorage.setItem('lastPriceUpdate', timestamp.toString());
                 localStorage.setItem('lastSyncTime', timestamp.toString());
                 
-                // 重新获取所有价格数据（包括最新保存的）
-                const allPriceData = JSON.parse(localStorage.getItem('priceData') || '[]');
-                
-                // 创建用于URL的精简数据（包含足够的历史记录）
+                // 创建用于URL的精简数据
                 const syncData = {
-                    t: timestamp, // 时间戳
-                    d: allPriceData.slice(0, CONFIG.URL_DATA_LIMIT), // 只保留最新数据
-                    v: 2 // 版本号，用于未来的兼容性
+                    t: timestamp,
+                    d: allPriceData.slice(0, CONFIG.URL_DATA_LIMIT),
+                    v: 3,
+                    sourceDevice: deviceType
                 };
                 
-                // 将数据编码为base64并添加到URL哈希中
                 const encodedData = btoa(JSON.stringify(syncData));
-                
-                // 更新URL哈希，但不创建新的历史记录
                 const newHash = '#' + encodedData;
                 if (window.location.hash !== newHash) {
                     window.history.replaceState({}, document.title, newHash);
-                    console.log('URL哈希已更新，包含最新价格数据');
                 }
                 
                 // 触发价格更新事件
@@ -208,10 +257,8 @@
                     }
                 }));
                 
-                console.log('价格数据已保存并同步，可通过URL在设备间共享');
+                return true;
             }
-            
-            return saveResult;
         } catch (error) {
             console.error('保存价格数据时出错:', error);
             return false;
@@ -266,11 +313,14 @@
             console.log('初始化时成功从URL哈希同步数据');
         }
         
-        // 输出使用说明到控制台
+        // 输出使用说明到控制台 - 增强跨设备同步说明
         console.log('\n===== 价格同步使用说明 =====');
-        console.log('1. 在PC端输入最新价格后，URL会自动更新，包含同步数据');
-        console.log('2. 将更新后的URL复制到移动设备打开，即可自动同步最新价格');
-        console.log('3. 控制台辅助函数:');
+        console.log('1. 在任何设备（PC或移动设备）上输入最新价格后，URL会自动更新，包含同步数据');
+        console.log('2. 将更新后的URL复制到其他设备打开，即可自动同步最新价格');
+        console.log('3. 设备间数据同步方法:');
+        console.log('   - 方法1：在移动端更新价格后，复制浏览器地址栏中的URL，粘贴到PC端浏览器打开');
+        console.log('   - 方法2：在移动端更新价格后，PC端刷新页面以获取最新同步数据');
+        console.log('4. 控制台辅助函数:');
         console.log('   - getSyncUrl() - 获取包含最新数据的同步URL');
         console.log('   - getSyncStatus() - 查看当前同步状态');
         console.log('   - parseDataFromUrlHash() - 立即从URL哈希同步数据');
@@ -282,10 +332,14 @@
             parseDataFromUrlHash();
         });
         
-        // 定期检查同步状态
+        // 定期检查同步状态 - 增加稳定性和错误处理
         setInterval(function() {
-            console.log('执行定时同步检查...');
-            parseDataFromUrlHash();
+            try {
+                console.log('执行定时同步检查...');
+                parseDataFromUrlHash();
+            } catch (error) {
+                console.warn('定时同步检查出错:', error);
+            }
         }, CONFIG.SYNC_CHECK_INTERVAL);
         
         // 导出函数以便其他文件使用

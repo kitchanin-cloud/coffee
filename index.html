@@ -330,11 +330,6 @@
                     <span class="lang-th">ข้อมูลติดต่อ</span>
                     <span class="lang-zh">联系信息</span>
                 </button>
-                <button id="sync-btn" title="从URL刷新最新价格">
-                    <span class="lang-en">Sync Now</span>
-                    <span class="lang-th">ซิงค์ข้อมูล</span>
-                    <span class="lang-zh">立即同步</span>
-                </button>
             </div>
         </div>
     </div>
@@ -389,21 +384,63 @@
             // 检测是否为移动设备
             const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
             
-            // 刷新价格数据的函数
+            // 刷新价格数据的函数 - 增强版，支持更好的跨设备同步体验
             function refreshPriceData() {
                 try {
                     console.log('Refreshing price data...');
                     const allPriceData = getLatestPriceData();
                     console.log('Total price records:', allPriceData.length);
+                    
                     if (Array.isArray(allPriceData) && allPriceData.length > 0) {
                         const latestPrice = allPriceData[0].price;
-                        console.log('Latest price:', latestPrice);
+                        const latestRecord = allPriceData[0];
+                        console.log('Latest price:', latestPrice, '来源:', latestRecord.sourceDevice || '未知');
                         
                         // 确保显示最新价格，无论是否有变化
                         currentPriceElement.style.opacity = '0.5';
+                        
+                        // 检查是否有新的同步数据
+                        const lastSyncTime = parseInt(localStorage.getItem('lastSyncTime') || '0');
+                        const isNewSync = Date.now() - lastSyncTime < 5000; // 5秒内的同步视为新同步
+                        
                         setTimeout(() => {
                             currentPriceElement.textContent = `¥${latestPrice} / ตัน (吨)`;
                             currentPriceElement.style.opacity = '1';
+                            
+                            // 如果是来自同步的数据，显示同步来源信息
+                            if (isNewSync && latestRecord.sourceDevice) {
+                                // 先移除已有的通知元素
+                                const existingNotification = document.querySelector('.sync-source-notification');
+                                if (existingNotification && existingNotification.parentNode) {
+                                    existingNotification.parentNode.removeChild(existingNotification);
+                                }
+                                
+                                const syncSourceElement = document.createElement('div');
+                                syncSourceElement.className = 'sync-source-notification';
+                                syncSourceElement.textContent = `数据来自${latestRecord.sourceDevice === 'mobile' ? '移动端' : 'PC端'}更新`;
+                                syncSourceElement.style.position = 'absolute';
+                                syncSourceElement.style.top = '10px';
+                                syncSourceElement.style.right = '10px';
+                                syncSourceElement.style.background = 'rgba(76, 175, 80, 0.9)';
+                                syncSourceElement.style.color = 'white';
+                                syncSourceElement.style.padding = '5px 10px';
+                                syncSourceElement.style.borderRadius = '4px';
+                                syncSourceElement.style.fontSize = '12px';
+                                syncSourceElement.style.zIndex = '1000';
+                                
+                                currentPriceElement.parentNode.appendChild(syncSourceElement);
+                                
+                                // 3秒后移除通知
+                                setTimeout(() => {
+                                    syncSourceElement.style.opacity = '0';
+                                    syncSourceElement.style.transition = 'opacity 0.5s ease';
+                                    setTimeout(() => {
+                                        if (syncSourceElement.parentNode) {
+                                            syncSourceElement.parentNode.removeChild(syncSourceElement);
+                                        }
+                                    }, 500);
+                                }, 3000);
+                            }
                         }, 200);
                     } else {
                         console.warn('No price data available');
@@ -431,13 +468,23 @@
                 refreshPriceData();
             }
             
-            // 添加对自定义price-updated事件的监听
+            // 添加对多种同步相关事件的监听
             window.addEventListener('price-updated', handlePriceUpdate);
+            window.addEventListener('price-data-saved', handlePriceUpdate); // 来自data.js的事件
+            
+            // 监听存储事件，以便在同一设备的不同标签页之间同步
+            window.addEventListener('storage', function(event) {
+                if (event.key === 'priceData' || event.key === 'lastPriceUpdate' || event.key === 'lastSyncTime') {
+                    console.log('检测到localStorage变化，刷新价格数据...');
+                    refreshPriceData();
+                }
+            });
             
             // 页面卸载时清理资源
             window.addEventListener('beforeunload', () => {
                 clearInterval(intervalId);
                 window.removeEventListener('price-updated', handlePriceUpdate);
+                window.removeEventListener('price-data-saved', handlePriceUpdate);
             });
 
             const contactBtn = document.getElementById('contact-btn');
@@ -457,48 +504,6 @@
                     contactModal.style.display = 'none';
                 }
             });
-
-            // 立即同步按钮事件
-            const syncBtn = document.getElementById('sync-btn');
-            if (syncBtn) {
-                syncBtn.addEventListener('click', () => {
-                    console.log('用户手动触发数据同步...');
-                    if (window.parseDataFromUrlHash) {
-                        const synced = window.parseDataFromUrlHash();
-                        if (synced) {
-                            console.log('手动同步成功');
-                            // 显示成功消息
-                            const notification = document.createElement('div');
-                            notification.style.position = 'fixed';
-                            notification.style.top = '20px';
-                            notification.style.left = '50%';
-                            notification.style.transform = 'translateX(-50%)';
-                            notification.style.backgroundColor = '#4CAF50';
-                            notification.style.color = 'white';
-                            notification.style.padding = '15px 30px';
-                            notification.style.borderRadius = '5px';
-                            notification.style.zIndex = '1000';
-                            notification.style.boxShadow = '0 4px 8px rgba(0,0,0,0.2)';
-                            notification.textContent = '价格数据已成功同步！';
-                            document.body.appendChild(notification);
-                            
-                            setTimeout(() => {
-                                notification.style.opacity = '0';
-                                notification.style.transition = 'opacity 0.5s';
-                                setTimeout(() => {
-                                    if (notification.parentNode) {
-                                        notification.parentNode.removeChild(notification);
-                                    }
-                                }, 500);
-                            }, 2000);
-                        } else {
-                            console.log('没有新数据需要同步');
-                        }
-                    } else {
-                        console.warn('同步工具不可用');
-                    }
-                });
-            }
         });
     </script>
         
@@ -629,8 +634,48 @@
                 const hasSynced = window.parseDataFromUrlHash();
                 if (hasSynced) {
                     console.log('成功从URL哈希同步数据');
+                    // 同步成功后立即刷新价格显示
+                    setTimeout(() => {
+                        const refreshPriceData = window.refreshPriceData || (typeof getLatestPriceData === 'function' ? function() {
+                            try {
+                                const currentPriceElement = document.getElementById('current-price');
+                                const allPriceData = getLatestPriceData();
+                                if (Array.isArray(allPriceData) && allPriceData.length > 0) {
+                                    currentPriceElement.textContent = `¥${allPriceData[0].price} / ตัน (吨)`;
+                                }
+                            } catch (e) { console.error('Error in emergency refresh:', e); }
+                        } : function() {});
+                        refreshPriceData();
+                    }, 300);
                 }
             }
+            
+            // 设置定期检查URL哈希变化（每2秒一次，与test_price_sync.js保持一致）
+            setInterval(() => {
+                if (window.parseDataFromUrlHash) {
+                    try {
+                        const hasSynced = window.parseDataFromUrlHash();
+                        if (hasSynced) {
+                            console.log('定期检查检测到并应用了新的同步数据');
+                            // 立即刷新价格显示
+                            setTimeout(() => {
+                                const refreshPriceData = window.refreshPriceData || (typeof getLatestPriceData === 'function' ? function() {
+                                    try {
+                                        const currentPriceElement = document.getElementById('current-price');
+                                        const allPriceData = getLatestPriceData();
+                                        if (Array.isArray(allPriceData) && allPriceData.length > 0) {
+                                            currentPriceElement.textContent = `¥${allPriceData[0].price} / ตัน (吨)`;
+                                        }
+                                    } catch (e) { console.error('Error in emergency refresh:', e); }
+                                } : function() {});
+                                refreshPriceData();
+                            }, 300);
+                        }
+                    } catch (error) {
+                        console.warn('定期检查URL哈希时出错:', error);
+                    }
+                }
+            }, 2000);
         });
         </script>
         

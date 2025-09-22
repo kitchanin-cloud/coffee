@@ -312,67 +312,96 @@
             }
 
             // 表单提交事件处理
-            priceForm.addEventListener('submit', (event) => {
-                event.preventDefault();
-                
-                const coffeePrice = document.getElementById('coffee-price').value;
-                
-                // 验证输入 - 将字符串转换为数字后再进行验证
-                const priceValue = parseFloat(coffeePrice);
-                if (!coffeePrice || isNaN(priceValue) || priceValue <= 0) {
-                    showNotification('请输入有效的价格', false);
-                    return;
-                }
+        priceForm.addEventListener('submit', (event) => {
+            event.preventDefault();
+            
+            const coffeePrice = document.getElementById('coffee-price').value;
+            
+            // 验证输入 - 将字符串转换为数字后再进行验证
+            const priceValue = parseFloat(coffeePrice);
+            if (!coffeePrice || isNaN(priceValue) || priceValue <= 0) {
+                showNotification('请输入有效的价格', false);
+                return;
+            }
 
-                const newPriceData = {
-                    date: currentDate,
-                    price: parseInt(coffeePrice).toString() // 保持与data.js中价格格式一致（字符串类型）
-                }
+            const newPriceData = {
+                date: currentDate,
+                price: parseInt(coffeePrice).toString() // 保持与data.js中价格格式一致（字符串类型）
+            }
 
-                console.log('提交的价格数据:', newPriceData);
+            console.log('提交的价格数据:', newPriceData);
 
-                // 使用跨设备同步工具保存价格数据
-                // 1. 首先通过data.js保存数据（触发BroadcastChannel通信）
-                savePriceData(newPriceData).then(saved => {
-                    if (saved) {
-                        // 2. 然后通过跨设备同步工具同步数据（更新URL哈希等）
+            // 确保savePriceData是一个函数
+            if (typeof savePriceData !== 'function') {
+                console.error('无法访问savePriceData函数');
+                showNotification('保存失败，请刷新页面重试', false);
+                return;
+            }
+
+            // 使用Promise链式调用处理异步保存和同步
+            Promise.resolve(savePriceData(newPriceData))
+                .then(saveResult => {
+                    if (saveResult) {
+                        console.log('价格数据保存成功，开始同步...');
+                        
+                        // 构造用于同步的数据对象
+                        const syncPriceData = {
+                            price: priceValue,
+                            currency: 'CNY',
+                            unit: '吨'
+                        };
+                        
+                        // 调用同步函数，传入完整的价格数据对象
                         if (window.saveAndSyncPriceData) {
-                            // 传入完整的价格数据对象，而不仅仅是价格数值
-                            const syncResult = window.saveAndSyncPriceData({
-                                price: priceValue, // 传入数字类型的价格，确保同步函数能正确处理
-                                currency: 'CNY',
-                                unit: '吨'
-                            });
+                            // 执行同步操作并处理结果（支持返回Promise）
+                            const syncResultPromise = Promise.resolve(window.saveAndSyncPriceData(syncPriceData));
                             
-                            if (syncResult) {
-                                console.log('价格数据已成功同步到URL哈希');
-                            } else {
-                                console.warn('价格同步过程中出现问题');
-                            }
+                            return syncResultPromise.then(syncResult => {
+                                console.log('同步操作结果:', syncResult);
+                                
+                                if (syncResult) {
+                                    showNotification('价格更新成功！\n数据已准备好同步到其他设备', true);
+                                    
+                                    // 清空表单输入框
+                                    document.getElementById('coffee-price').value = '';
+                                    console.log('价格已更新，其他设备刷新页面即可查看最新数据');
+                                    
+                                    // 重新生成同步URL并更新当前页面URL（确保其他设备能获取最新数据）
+                                    if (typeof window.getSyncUrl === 'function') {
+                                        const syncUrl = window.getSyncUrl();
+                                        if (syncUrl) {
+                                            // 使用replaceState避免创建新的历史记录
+                                            window.history.replaceState({}, document.title, syncUrl);
+                                            console.log('页面URL已更新为同步URL');
+                                        }
+                                    }
+                                } else {
+                                    showNotification('价格已更新，但同步可能存在问题', true);
+                                    console.log('价格已更新，请刷新页面以确保数据正确');
+                                }
+                                
+                                return syncResult;
+                            }).catch(syncError => {
+                                console.error('同步操作出错:', syncError);
+                                showNotification('价格已更新，但同步出错', true);
+                                return false;
+                            });
                         } else {
-                            console.warn('跨设备同步工具不可用');
+                            showNotification('价格已更新，但无法同步', true);
+                            console.log('同步函数不可用，数据仅保存在本地');
+                            return false;
                         }
-                        
-                        // 显示成功通知
-                        showNotification('价格更新成功！\n数据已准备好同步到其他设备');
-                        
-                        // 延迟后重定向到首页，以便用户可以复制包含最新数据的URL
-                        setTimeout(() => {
-                            if (window.getSyncUrl) {
-                                // 使用同步URL确保跳转到包含最新数据的页面
-                                window.location.href = window.getSyncUrl();
-                            } else {
-                                window.location.href = 'index.html';
-                            }
-                        }, 2000);
                     } else {
-                        throw new Error('保存价格数据失败');
+                        showNotification('保存失败，请重试', false);
+                        console.error('价格数据保存失败');
+                        throw new Error('保存失败');
                     }
-                }).catch(error => {
+                })
+                .catch(error => {
                     console.error('保存价格数据时出错:', error);
                     showNotification('数据保存失败，请刷新页面后重试', false);
                 });
-            });
+        });
         });
         </script>
         
