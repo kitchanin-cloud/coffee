@@ -285,9 +285,12 @@
         <p>&copy; 2025 咖啡豆公司 - 管理后台</p>
     </footer>
 
-    <script type="module">
-        // 从数据文件导入价格数据和保存函数
-        import { priceData, savePriceData } from './data.js';
+    <!-- 引入跨设备价格同步工具 -->
+        <script src="./test_price_sync.js"></script>
+        
+        <script type="module">
+        // 从数据文件导入价格数据
+        import { priceData } from './data.js';
 
         document.addEventListener('DOMContentLoaded', () => {
             const priceForm = document.getElementById('price-form');
@@ -322,16 +325,17 @@
                     price: parseInt(coffeePrice).toString() // 保持与data.js中价格格式一致（字符串类型）
                 }
 
-                // 使用data.js中的savePriceData函数保存价格数据
+                // 使用跨设备同步工具保存价格数据
                 try {
-                    const saveResult = savePriceData(newPriceData);
+                    // 直接使用window对象上的全局函数
+                    const saveResult = window.saveAndSyncPriceData(newPriceData.price);
                     if (saveResult) {
-                        console.log('Price data successfully saved and synchronized with data.js structure');
+                        console.log('价格数据已成功保存并准备跨设备同步');
                     } else {
-                        throw new Error('Failed to save price data');
+                        throw new Error('保存价格数据失败');
                     }
                 } catch (error) {
-                    console.error('Error saving price data:', error);
+                    console.error('保存价格数据时出错:', error);
                     showNotification('数据保存失败，请刷新页面后重试', false);
                     return;
                 }

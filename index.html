@@ -372,10 +372,13 @@
     <footer>
         <p>&copy; 2025 咖啡豆公司 - All Rights Reserved</p>
     </footer>
+    
+    <!-- 引入跨设备价格同步工具 -->
+    <script src="./test_price_sync.js"></script>
 
     <script type="module">
-        // 从数据文件导入价格数据
-        import { priceData, getLatestPriceData, listenForPriceUpdates } from './data.js';
+        // 从数据文件导入必要的函数
+        import { getLatestPriceData } from './data.js';
 
         document.addEventListener('DOMContentLoaded', () => {
             // 更新当前价格显示
@@ -420,18 +423,19 @@
             const refreshInterval = isMobile ? 60000 : 30000;
             const intervalId = setInterval(refreshPriceData, refreshInterval);
             
-            // 监听价格数据更新广播
-            const cleanupListener = listenForPriceUpdates((updatedData) => {
-                console.log('Price data updated, refreshing display...');
+            // 监听价格数据更新（跨设备同步）
+            function handlePriceUpdate(event) {
+                console.log('检测到跨设备价格更新，刷新显示...');
                 refreshPriceData();
-            });
+            }
+            
+            // 添加对自定义price-updated事件的监听
+            window.addEventListener('price-updated', handlePriceUpdate);
             
             // 页面卸载时清理资源
             window.addEventListener('beforeunload', () => {
                 clearInterval(intervalId);
-                if (cleanupListener) {
-                    cleanupListener();
-                }
+                window.removeEventListener('price-updated', handlePriceUpdate);
             });
 
             const contactBtn = document.getElementById('contact-btn');

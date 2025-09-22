@@ -398,6 +398,9 @@
                 </tbody>
             </table>
         </div>
+        
+        <!-- 引入跨设备价格同步工具 -->
+        <script src="./test_price_sync.js"></script>
 
         <!-- 分页控件 -->
         <div class="pagination">
@@ -424,8 +427,8 @@
     </div>
 
     <script type="module">
-        // 从数据文件导入价格数据
-        import { priceData, getLatestPriceData, listenForPriceUpdates } from './data.js';
+        // 从数据文件导入必要的函数
+        import { getLatestPriceData } from './data.js';
 
         document.addEventListener('DOMContentLoaded', () => {
             const tableBody = document.getElementById('history-data-body');
@@ -453,17 +456,18 @@
                 clearInterval(refreshTimer);
             });
             
-            // 监听价格数据更新广播
-            const cleanupListener = listenForPriceUpdates((updatedData) => {
-                console.log('Price data updated, refreshing history display...');
+            // 监听价格数据更新（跨设备同步）
+            function handlePriceUpdate(event) {
+                console.log('检测到跨设备价格更新，刷新历史记录显示...');
                 renderPage(currentPage);
-            });
+            }
+            
+            // 添加对自定义price-updated事件的监听
+            window.addEventListener('price-updated', handlePriceUpdate);
             
             // 页面卸载时清理监听器
             window.addEventListener('beforeunload', () => {
-                if (cleanupListener) {
-                    cleanupListener();
-                }
+                window.removeEventListener('price-updated', handlePriceUpdate);
             });
 
             // 动态计算总页数
@@ -471,24 +475,61 @@
                 return Math.ceil(data.length / itemsPerPage);
             }
 
-            // 获取价格数据 - 使用data.js中的getLatestPriceData函数
+            // 基础价格历史数据（作为回退数据）
+            const basePriceData = [
+                { date: '2025-08-30', price: '58901' },
+                { date: '2025-08-29', price: '57632' },
+                { date: '2025-08-28', price: '59231' },
+                { date: '2025-08-27', price: '60123' },
+                { date: '2025-08-26', price: '59876' },
+                { date: '2025-08-25', price: '59321' },
+                { date: '2025-08-24', price: '61987' },
+                { date: '2025-08-23', price: '57890' },
+                { date: '2025-08-22', price: '62543' },
+                { date: '2025-08-21', price: '58432' }
+            ];
+            
+            // 获取价格数据 - 使用跨设备同步方案
             function getPriceData() {
                 try {
-                    console.log('Attempting to get price data...');
-                    const allPriceData = getLatestPriceData();
-                    console.log('Total price records:', allPriceData.length);
+                    console.log('获取价格数据...');
                     
-                    // 如果数据为空，使用默认的priceData
-                    if (!Array.isArray(allPriceData) || allPriceData.length === 0) {
-                        console.warn('No data from getLatestPriceData, using default data');
-                        return [...priceData].sort((a, b) => new Date(b.date) - new Date(a.date));
+                    // 首先尝试从localStorage获取数据
+                    let storedData = null;
+                    try {
+                        const storedDataStr = localStorage.getItem('priceData');
+                        if (storedDataStr) {
+                            storedData = JSON.parse(storedDataStr);
+                            console.log('从localStorage获取到数据，记录数:', Array.isArray(storedData) ? storedData.length : 0);
+                        }
+                    } catch (localStorageError) {
+                        console.warn('从localStorage读取数据失败:', localStorageError);
                     }
                     
-                    return allPriceData;
+                    // 如果localStorage中有有效数据，使用它
+                    if (Array.isArray(storedData) && storedData.length > 0) {
+                        return storedData;
+                    }
+                    
+                    // 否则尝试使用getLatestPriceData
+                    try {
+                        const allPriceData = getLatestPriceData();
+                        console.log('从getLatestPriceData获取到数据，记录数:', allPriceData.length);
+                        
+                        if (Array.isArray(allPriceData) && allPriceData.length > 0) {
+                            return allPriceData;
+                        }
+                    } catch (error) {
+                        console.warn('从getLatestPriceData获取数据失败:', error);
+                    }
+                    
+                    // 最后回退到使用基础数据
+                    console.log('没有找到更新的数据，使用基础数据');
+                    return [...basePriceData].sort((a, b) => new Date(b.date) - new Date(a.date));
                 } catch (error) {
-                    console.error('Error getting price data:', error);
-                    // 出错时回退到使用data.js中的数据
-                    return [...priceData].sort((a, b) => new Date(b.date) - new Date(a.date));
+                    console.error('获取价格数据时出错:', error);
+                    // 出错时回退到使用基础数据
+                    return [...basePriceData].sort((a, b) => new Date(b.date) - new Date(a.date));
                 }
             }
 
