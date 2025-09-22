@@ -401,7 +401,8 @@
                         
                         // 检查是否有新的同步数据
                         const lastSyncTime = parseInt(localStorage.getItem('lastSyncTime') || '0');
-                        const isNewSync = Date.now() - lastSyncTime < 5000; // 5秒内的同步视为新同步
+                        const lastPriceUpdate = parseInt(localStorage.getItem('lastPriceUpdate') || '0');
+                        const isNewSync = Date.now() - Math.max(lastSyncTime, lastPriceUpdate) < 5000; // 5秒内的同步视为新同步
                         
                         setTimeout(() => {
                             currentPriceElement.textContent = `¥${latestPrice} / ตัน (吨)`;
@@ -457,34 +458,60 @@
             // 初始加载价格数据
             refreshPriceData();
             
-            // 为PC端设置更频繁的自动刷新（每30秒）
-            // 移动端由于交互更频繁，刷新间隔可以更长
-            const refreshInterval = isMobile ? 60000 : 30000;
-            const intervalId = setInterval(refreshPriceData, refreshInterval);
-            
-            // 监听价格数据更新（跨设备同步）
-            function handlePriceUpdate(event) {
-                console.log('检测到跨设备价格更新，刷新显示...');
-                refreshPriceData();
-            }
-            
-            // 添加对多种同步相关事件的监听
-            window.addEventListener('price-updated', handlePriceUpdate);
-            window.addEventListener('price-data-saved', handlePriceUpdate); // 来自data.js的事件
-            
-            // 监听存储事件，以便在同一设备的不同标签页之间同步
-            window.addEventListener('storage', function(event) {
-                if (event.key === 'priceData' || event.key === 'lastPriceUpdate' || event.key === 'lastSyncTime') {
-                    console.log('检测到localStorage变化，刷新价格数据...');
+            // 设置价格更新事件监听
+            function setupPriceUpdateListeners() {
+                // 监听价格数据更新（跨设备同步）
+                function handlePriceUpdate(event) {
+                    console.log('检测到跨设备价格更新，刷新显示...');
                     refreshPriceData();
                 }
-            });
+                
+                // 添加对多种同步相关事件的监听
+                window.addEventListener('price-updated', handlePriceUpdate);
+                window.addEventListener('price-data-saved', handlePriceUpdate); // 来自data.js的事件
+                
+                // 监听存储事件，以便在同一设备的不同标签页之间同步
+                window.addEventListener('storage', function(event) {
+                    if (event.key === 'priceData' || event.key === 'lastPriceUpdate' || event.key === 'lastSyncTime') {
+                        console.log('检测到localStorage变化，刷新价格数据...');
+                        refreshPriceData();
+                    }
+                });
+                
+                // 返回清理函数
+                return function cleanup() {
+                    window.removeEventListener('price-updated', handlePriceUpdate);
+                    window.removeEventListener('price-data-saved', handlePriceUpdate);
+                };
+            }
+            
+            // 初始化事件监听
+            const cleanup = setupPriceUpdateListeners();
+            
+            // 为PC端设置更频繁的自动刷新（每5秒）
+            // 移动端由于交互更频繁，刷新间隔可以更长
+            const refreshInterval = isMobile ? 15000 : 5000;
+            const intervalId = setInterval(refreshPriceData, refreshInterval);
+            
+            // 增加URL哈希同步检查，每1秒检查一次
+            if (window.parseDataFromUrlHash) {
+                setInterval(function() {
+                    try {
+                        const hashSynced = window.parseDataFromUrlHash();
+                        if (hashSynced) {
+                            console.log('定期检查发现URL哈希更新，刷新价格数据');
+                            refreshPriceData();
+                        }
+                    } catch (error) {
+                        console.warn('URL哈希同步检查出错:', error);
+                    }
+                }, 1000); // 每1秒检查一次，提高响应速度
+            }
             
             // 页面卸载时清理资源
             window.addEventListener('beforeunload', () => {
                 clearInterval(intervalId);
-                window.removeEventListener('price-updated', handlePriceUpdate);
-                window.removeEventListener('price-data-saved', handlePriceUpdate);
+                cleanup();
             });
 
             const contactBtn = document.getElementById('contact-btn');

@@ -359,22 +359,27 @@
                             return syncResultPromise.then(syncResult => {
                                 console.log('同步操作结果:', syncResult);
                                 
-                                if (syncResult) {
-                                    showNotification('价格更新成功！\n数据已准备好同步到其他设备', true);
+                                if (syncResult || typeof syncResult === 'undefined') {
+                                    // 同步成功或函数没有明确返回值
+                                    showNotification('价格更新成功！\n正在跳转到首页...', true);
                                     
                                     // 清空表单输入框
                                     document.getElementById('coffee-price').value = '';
-                                    console.log('价格已更新，其他设备刷新页面即可查看最新数据');
+                                    console.log('价格已更新，数据已同步');
                                     
-                                    // 重新生成同步URL并更新当前页面URL（确保其他设备能获取最新数据）
+                                    // 重新生成同步URL并更新当前页面URL
                                     if (typeof window.getSyncUrl === 'function') {
                                         const syncUrl = window.getSyncUrl();
                                         if (syncUrl) {
-                                            // 使用replaceState避免创建新的历史记录
                                             window.history.replaceState({}, document.title, syncUrl);
                                             console.log('页面URL已更新为同步URL');
                                         }
                                     }
+                                    
+                                    // 延迟跳转到index页面，让用户看到成功提示
+                                    setTimeout(() => {
+                                        window.location.href = 'index.html';
+                                    }, 1500);
                                 } else {
                                     showNotification('价格已更新，但同步可能存在问题', true);
                                     console.log('价格已更新，请刷新页面以确保数据正确');
@@ -384,6 +389,10 @@
                             }).catch(syncError => {
                                 console.error('同步操作出错:', syncError);
                                 showNotification('价格已更新，但同步出错', true);
+                                // 即使同步出错，也跳转到index页面
+                                setTimeout(() => {
+                                    window.location.href = 'index.html';
+                                }, 1500);
                                 return false;
                             });
                         } else {

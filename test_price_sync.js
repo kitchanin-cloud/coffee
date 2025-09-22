@@ -180,7 +180,7 @@
                         const syncData = {
                             t: timestamp, // 时间戳
                             d: allPriceData.slice(0, CONFIG.URL_DATA_LIMIT), // 只保留最新数据
-                            v: 3, // 更新版本号
+                            v: 4, // 更新版本号为4
                             sourceDevice: deviceType // 添加设备类型信息
                         };
                         
