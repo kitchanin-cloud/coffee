@@ -572,6 +572,71 @@
                 }, isMobile ? 8000 : 15000); // 移动端更频繁的刷新间隔
             });
         </script>
+        
+        <!-- 引入跨设备价格同步工具 -->
+        <script src="./test_price_sync.js"></script>
+        
+        <script type="module">
+        // 从数据文件导入价格数据和函数
+        import { priceData, getLatestPriceData } from './data.js';
+        
+        // 更新价格显示的函数
+        function updatePriceDisplay(newPriceData) {
+            try {
+                // 如果没有提供新数据，获取最新的价格数据
+                const latestData = newPriceData || getLatestPriceData();
+                
+                if (latestData && Array.isArray(latestData) && latestData.length > 0) {
+                    // 获取最新的价格（第一条记录）
+                    const latestPrice = latestData[0];
+                    
+                    // 更新价格显示
+                    const priceValueEl = document.querySelector('.price-value');
+                    if (priceValueEl) {
+                        // 添加过渡动画效果
+                        priceValueEl.style.transition = 'all 0.5s ease';
+                        priceValueEl.style.opacity = '0.5';
+                        
+                        setTimeout(() => {
+                            priceValueEl.textContent = latestPrice.price;
+                            priceValueEl.style.opacity = '1';
+                        }, 200);
+                        
+                        console.log('价格显示已更新:', latestPrice);
+                    }
+                }
+            } catch (error) {
+                console.error('更新价格显示时出错:', error);
+            }
+        }
+        
+        // 监听价格更新事件，当其他设备更新价格时，实时更新当前页面
+        window.addEventListener('price-updated', function(event) {
+            console.log('收到价格更新事件，开始更新页面显示...');
+            updatePriceDisplay(event.detail.data);
+            
+            // 刷新GIF动画以吸引用户注意
+            if (window.refreshGIF) {
+                window.refreshGIF();
+            }
+        });
+        
+        // 页面加载完成后立即执行一次同步检查
+        document.addEventListener('DOMContentLoaded', function() {
+            // 立即尝试从共享文件同步数据
+            if (window.syncFromSharedFile) {
+                console.log('页面加载完成，尝试同步最新价格数据...');
+                window.syncFromSharedFile();
+            }
+            
+            // 设置一个定时器，定期同步数据（每10秒）
+            setInterval(function() {
+                if (window.syncFromSharedFile) {
+                    window.syncFromSharedFile();
+                }
+            }, 10000);
+        });
+        </script>
     </body>
 </html>
 

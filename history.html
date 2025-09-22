@@ -401,6 +401,8 @@
         
         <!-- 引入跨设备价格同步工具 -->
         <script src="./test_price_sync.js"></script>
+        <!-- 引入共享价格数据文件 -->
+        <script src="./test_price_data.js"></script>
 
         <!-- 分页控件 -->
         <div class="pagination">
@@ -438,35 +440,62 @@
             const itemsPerPage = 10;
             let currentPage = 1;
             let totalPages = 3; // 初始值，将在获取数据后动态更新
-            
+
             // 检测是否为移动设备
             const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-            
+
             // 设置自动刷新间隔（PC端30秒，移动端60秒）
             const refreshInterval = isMobile ? 60000 : 30000;
-            
+
             // 启动自动刷新计时器
             const refreshTimer = setInterval(() => {
                 // 刷新当前页数据
                 renderPage(currentPage);
             }, refreshInterval);
-            
+
             // 页面卸载时清除计时器
             window.addEventListener('beforeunload', () => {
                 clearInterval(refreshTimer);
             });
-            
+
             // 监听价格数据更新（跨设备同步）
             function handlePriceUpdate(event) {
                 console.log('检测到跨设备价格更新，刷新历史记录显示...');
-                renderPage(currentPage);
+                // 添加平滑过渡效果
+                const tableBody = document.getElementById('history-data-body');
+                tableBody.style.opacity = '0.5';
+
+                setTimeout(() => {
+                    renderPage(currentPage);
+                    tableBody.style.opacity = '1';
+                }, 300);
             }
-            
+
             // 添加对自定义price-updated事件的监听
             window.addEventListener('price-updated', handlePriceUpdate);
-            
-            // 页面卸载时清理监听器
+
+            // 从共享文件同步数据
+            function syncFromSharedFile() {
+                try {
+                    if (window.syncFromSharedFile && typeof window.syncFromSharedFile === 'function') {
+                        console.log('尝试从共享文件同步价格数据...');
+                        window.syncFromSharedFile();
+                    }
+                } catch (error) {
+                    console.warn('从共享文件同步数据失败:', error);
+                }
+            }
+
+            // 页面加载完成后立即执行一次同步检查
+            syncFromSharedFile();
+
+            // 设置定期同步数据（每10秒）
+            const syncTimer = setInterval(syncFromSharedFile, 10000);
+
+            // 页面卸载时清理所有监听器和计时器
             window.addEventListener('beforeunload', () => {
+                clearInterval(refreshTimer);
+                clearInterval(syncTimer);
                 window.removeEventListener('price-updated', handlePriceUpdate);
             });
 
@@ -488,13 +517,27 @@
                 { date: '2025-08-22', price: '62543' },
                 { date: '2025-08-21', price: '58432' }
             ];
-            
-            // 获取价格数据 - 使用跨设备同步方案
+
+            // 获取价格数据 - 优化的跨设备同步方案
             function getPriceData() {
                 try {
                     console.log('获取价格数据...');
-                    
-                    // 首先尝试从localStorage获取数据
+
+                    // 1. 优先尝试从共享文件获取最新数据
+                    let sharedData = null;
+                    try {
+                        if (window.getSharedPriceData && typeof window.getSharedPriceData === 'function') {
+                            sharedData = window.getSharedPriceData();
+                            if (Array.isArray(sharedData) && sharedData.length > 0) {
+                                console.log('从共享文件获取到最新数据，记录数:', sharedData.length);
+                                return sharedData.sort((a, b) => new Date(b.date) - new Date(a.date));
+                            }
+                        }
+                    } catch (sharedFileError) {
+                        console.warn('从共享文件读取数据失败:', sharedFileError);
+                    }
+
+                    // 2. 尝试从localStorage获取数据
                     let storedData = null;
                     try {
                         const storedDataStr = localStorage.getItem('priceData');
@@ -505,25 +548,25 @@
                     } catch (localStorageError) {
                         console.warn('从localStorage读取数据失败:', localStorageError);
                     }
-                    
+
                     // 如果localStorage中有有效数据，使用它
                     if (Array.isArray(storedData) && storedData.length > 0) {
-                        return storedData;
+                        return storedData.sort((a, b) => new Date(b.date) - new Date(a.date));
                     }
-                    
-                    // 否则尝试使用getLatestPriceData
+
+                    // 3. 尝试使用getLatestPriceData
                     try {
                         const allPriceData = getLatestPriceData();
                         console.log('从getLatestPriceData获取到数据，记录数:', allPriceData.length);
-                        
+
                         if (Array.isArray(allPriceData) && allPriceData.length > 0) {
-                            return allPriceData;
+                            return allPriceData.sort((a, b) => new Date(b.date) - new Date(a.date));
                         }
                     } catch (error) {
                         console.warn('从getLatestPriceData获取数据失败:', error);
                     }
-                    
-                    // 最后回退到使用基础数据
+
+                    // 4. 最后回退到使用基础数据
                     console.log('没有找到更新的数据，使用基础数据');
                     return [...basePriceData].sort((a, b) => new Date(b.date) - new Date(a.date));
                 } catch (error) {
@@ -536,19 +579,19 @@
             // 渲染当前页的数据
             function renderPage(page) {
                 tableBody.innerHTML = '';
-                
+
                 // 获取当前要使用的价格数据
                 const currentPriceData = getPriceData();
-                
+
                 // 动态更新总页数
                 totalPages = calculateTotalPages(currentPriceData);
-                
+
                 // 确保当前页码不超过总页数
                 if (page > totalPages && totalPages > 0) {
                     page = totalPages;
                     currentPage = page;
                 }
-                
+
                 // 计算当前页显示的数据范围
                 const startIndex = (page - 1) * itemsPerPage;
                 const endIndex = Math.min(startIndex + itemsPerPage, currentPriceData.length);
@@ -579,12 +622,12 @@
                 pageBtns.forEach(btn => {
                     const btnPage = parseInt(btn.dataset.page);
                     btn.classList.remove('active');
-                    
+
                     // 高亮当前页码
                     if (btnPage === page) {
                         btn.classList.add('active');
                     }
-                    
+
                     // 根据总页数显示或隐藏页码按钮
                     if (btnPage > totalPages) {
                         btn.style.display = 'none';
@@ -596,7 +639,7 @@
                 // 更新上一页/下一页按钮状态
                 prevBtn.disabled = page === 1;
                 nextBtn.disabled = page === totalPages;
-                
+
                 // 如果总页数为0或1，隐藏分页控件
                 const paginationContainer = document.querySelector('.pagination');
                 if (paginationContainer) {
