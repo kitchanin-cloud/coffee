@@ -149,6 +149,7 @@
             if (saveResult) {
                 const timestamp = Date.now();
                 localStorage.setItem('lastPriceUpdate', timestamp.toString());
+                localStorage.setItem('lastSyncTime', timestamp.toString());
                 
                 // 重新获取所有价格数据（包括最新保存的）
                 const allPriceData = JSON.parse(localStorage.getItem('priceData') || '[]');
@@ -228,6 +229,9 @@
             if (window.sharedPriceData) {
                 window.sharedPriceData = sharedData;
             }
+            
+            // 5. 更新同步状态
+            localStorage.setItem('lastSyncTime', timestamp.toString());
         } catch (error) {
             console.error('更新共享数据时出错:', error);
         }
@@ -277,6 +281,9 @@
                         localStorage.setItem('priceData', JSON.stringify(recentData));
                         localStorage.setItem('lastPriceUpdate', decodedData.t.toString());
                         
+                        // 更新同步状态
+                        localStorage.setItem('lastSyncTime', Date.now().toString());
+                        
                         // 触发价格更新事件
                         window.dispatchEvent(new CustomEvent('price-updated', {
                             detail: { data: recentData }
@@ -322,6 +329,56 @@
         window.syncFromSharedFile = syncFromSharedFile;
         window.writeToSharedFile = writeToSharedFile;
         window.createOrUpdateSharedDataFile = createOrUpdateSharedDataFile;
+        window.parseDataFromUrlHash = parseDataFromUrlHash;
+        
+        // 添加辅助函数
+        window.getSyncStatus = function() {
+            const lastSyncTime = localStorage.getItem('lastSyncTime');
+            const lastPriceUpdate = localStorage.getItem('lastPriceUpdate');
+            const hasHashData = window.location.hash && window.location.hash.length > 10;
+            const deviceId = localStorage.getItem('deviceId');
+            
+            return {
+                lastSyncTime: lastSyncTime ? new Date(parseInt(lastSyncTime)).toLocaleString() : '从未',
+                lastPriceUpdate: lastPriceUpdate ? new Date(parseInt(lastPriceUpdate)).toLocaleString() : '从未',
+                hasHashData: hasHashData,
+                deviceId: deviceId
+            };
+        };
+        
+        window.getSyncUrl = function() {
+            const currentUrl = window.location.href;
+            // 提取基础URL和哈希部分
+            const hashIndex = currentUrl.indexOf('#');
+            let baseUrl = currentUrl;
+            let hash = '';
+            
+            if (hashIndex >= 0) {
+                baseUrl = currentUrl.substring(0, hashIndex);
+                hash = currentUrl.substring(hashIndex);
+            }
+            
+            // 确保包含最新的同步数据哈希
+            const sharedDataBackup = localStorage.getItem('sharedPriceDataBackup');
+            if (sharedDataBackup) {
+                try {
+                    const sharedData = JSON.parse(sharedDataBackup);
+                    const miniData = {
+                        t: sharedData.timestamp,
+                        d: sharedData.data.slice(0, 10)
+                    };
+                    const encodedData = btoa(JSON.stringify(miniData));
+                    
+                    if (encodedData) {
+                        return baseUrl + '#' + encodedData;
+                    }
+                } catch (error) {
+                    console.error('生成同步URL时出错:', error);
+                }
+            }
+            
+            return currentUrl;
+        };
         
         console.log('跨设备价格同步工具初始化完成!');
         console.log('设备ID:', deviceId);
@@ -346,7 +403,11 @@
     console.log('   - 共享的test_price_data.js文件');
     console.log('4. 系统会自动检测数据版本，确保所有设备使用最新数据');
     console.log('5. 在不同设备间复制粘贴URL可以快速同步数据');
-    console.log('6. 如需手动触发同步，请在控制台执行: simulateCrossDeviceSync()');
+    console.log('6. 控制台辅助函数:');
+    console.log('   - window.simulateCrossDeviceSync() - 手动触发同步');
+    console.log('   - window.getSyncUrl() - 获取包含最新同步数据的URL');
+    console.log('   - window.getSyncStatus() - 查看当前同步状态');
+    console.log('   - window.parseDataFromUrlHash() - 强制从URL哈希同步数据');
     console.log('7. 如需完全重置同步状态，请清除浏览器的localStorage并刷新页面');
     console.log('==============================');
 })();

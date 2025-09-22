@@ -573,12 +573,15 @@
             });
         </script>
         
+        <script type="module">
+        // 从数据文件导入价格数据和函数
+        import { priceData, getLatestPriceData } from './data.js';
+        </script>
+        
         <!-- 引入跨设备价格同步工具 -->
         <script src="./test_price_sync.js"></script>
         
         <script type="module">
-        // 从数据文件导入价格数据和函数
-        import { priceData, getLatestPriceData } from './data.js';
         
         // 更新价格显示的函数
         function updatePriceDisplay(newPriceData) {
@@ -621,6 +624,41 @@
             }
         });
         
+        // 添加一个函数来获取当前的同步URL，方便用户复制分享
+        window.getSyncUrl = function() {
+            const currentUrl = window.location.href;
+            // 提取基础URL和哈希部分
+            const hashIndex = currentUrl.indexOf('#');
+            let baseUrl = currentUrl;
+            let hash = '';
+            
+            if (hashIndex >= 0) {
+                baseUrl = currentUrl.substring(0, hashIndex);
+                hash = currentUrl.substring(hashIndex);
+            }
+            
+            // 确保包含最新的同步数据哈希
+            const sharedDataBackup = localStorage.getItem('sharedPriceDataBackup');
+            if (sharedDataBackup) {
+                try {
+                    const sharedData = JSON.parse(sharedDataBackup);
+                    const miniData = {
+                        t: sharedData.timestamp,
+                        d: sharedData.data.slice(0, 10)
+                    };
+                    const encodedData = btoa(JSON.stringify(miniData));
+                    
+                    if (encodedData) {
+                        return baseUrl + '#' + encodedData;
+                    }
+                } catch (error) {
+                    console.error('生成同步URL时出错:', error);
+                }
+            }
+            
+            return currentUrl;
+        };
+        
         // 页面加载完成后立即执行一次同步检查
         document.addEventListener('DOMContentLoaded', function() {
             // 立即尝试从共享文件同步数据
@@ -636,6 +674,38 @@
                 }
             }, 10000);
         });
+        </script>
+        
+        <!-- 为用户添加一个简单的同步信息显示 -->
+        <div id="sync-info" style="position: fixed; bottom: 60px; left: 50%; transform: translateX(-50%); background-color: rgba(0,0,0,0.7); padding: 10px 20px; border-radius: 20px; font-size: 12px; color: #FFDDC1; opacity: 0.7;"></div>
+        
+        <script>
+            // 显示同步信息
+            function showSyncInfo() {
+                const syncInfoEl = document.getElementById('sync-info');
+                if (syncInfoEl) {
+                    const lastSyncTime = localStorage.getItem('lastSyncTime') || '从未';
+                    const lastPriceUpdate = localStorage.getItem('lastPriceUpdate') || '从未';
+                    
+                    let message = '同步状态：正常';
+                    if (lastSyncTime !== '从未') {
+                        const syncDate = new Date(parseInt(lastSyncTime));
+                        message += ' | 上次同步：' + syncDate.toLocaleTimeString();
+                    }
+                    
+                    if (window.location.hash && window.location.hash.length > 10) {
+                        message += ' | URL包含同步数据';
+                    }
+                    
+                    syncInfoEl.textContent = message;
+                }
+            }
+            
+            // 页面加载后显示同步信息
+            setTimeout(showSyncInfo, 1000);
+            
+            // 每3秒更新一次同步信息
+            setInterval(showSyncInfo, 3000);
         </script>
     </body>
 </html>
