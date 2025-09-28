@@ -1,286 +1,676 @@
-// 全局咖啡豆价格共享数据管理
-// 提供统一的数据访问和同步机制，确保PC端和移动端使用同一个数据
+// 咖啡豆价格数据管理系统 - 完全重写版
+// 版本: 3.0
+// 核心特性: 权威数据源、完善的时间戳控制、健壮的冲突解决
 
-// 注意：此文件使用JavaScript语法而非TypeScript，移除了TypeScript特定语法以确保兼容性
+// 全局数据存储
+let priceDataStore = {
+  version: '3.0',
+  data: [],
+  lastUpdated: 0,
+  syncId: null
+};
 
-// 初始化全局共享数据源 - 确保所有页面和设备使用统一的数据
-(function() {
-  // 确保在浏览器环境中运行
-  if (typeof window === 'undefined') {
-    console.warn('test_price_data.js: Running in non-browser environment, skipping initialization');
-    return;
+// 核心配置
+const DATA_CONFIG = {
+  // 数据结构版本控制
+  DATA_VERSION: '3.0',
+  // 数据存储键名
+  STORAGE_KEY: 'coffee_price_data_v3',
+  // 最大数据保留天数
+  MAX_HISTORY_DAYS: 90,
+  // 缓存过期时间 (毫秒)
+  CACHE_EXPIRE_TIME: 60000, // 1分钟
+  // 数据验证规则
+  VALIDATION_RULES: {
+    date: /^\d{4}-\d{2}-\d{2}$/,
+    price: /^\d+(\.\d{1,2})?$/
   }
-  
-  // 检查是否已经初始化过
-  if (window.sharedPriceData && window.sharedPriceData.data && window.sharedPriceData.data.length > 0) {
-    console.log('全局共享数据源已初始化，版本:', window.sharedPriceData.version);
-    return;
-  }
-  
-  // 尝试从localStorage获取数据
-  let initialData = [];
-  let initialSource = 'base';
-  
+};
+
+/**
+ * 初始化数据管理系统
+ * @returns {boolean} 初始化是否成功
+ */
+export function initPriceSystem() {
   try {
-    const storedDataStr = localStorage.getItem('priceData');
-    const storedTimestamp = localStorage.getItem('lastPriceUpdate');
+    console.log('初始化咖啡豆价格数据管理系统 v3.0');
     
-    if (storedDataStr && storedTimestamp) {
-      try {
-        const parsedData = JSON.parse(storedDataStr);
-        if (Array.isArray(parsedData) && parsedData.length > 0) {
-          initialData = parsedData;
-          initialSource = 'localStorage';
-          console.log('从localStorage恢复全局共享数据，共', parsedData.length, '条记录');
-        }
-      } catch (e) {
-        console.error('解析localStorage数据失败:', e);
-      }
-    }
-  } catch (error) {
-    console.error('读取localStorage失败:', error);
-  }
-  
-  // 初始化统一的全局共享数据源
-  window.sharedPriceData = {
-    data: initialData,
-    timestamp: Date.now(),
-    version: '1.0',
-    source: initialSource,
-    deviceId: localStorage.getItem('deviceId') || `device_${Date.now()}`,
-    lastSync: Date.now().toString()
-  };
-  
-  // 保存设备ID到localStorage
-  localStorage.setItem('deviceId', window.sharedPriceData.deviceId);
-  
-  console.log('全局共享数据源初始化完成，数据来源:', initialSource, '，版本:', window.sharedPriceData.version);
-  console.log('设备ID:', window.sharedPriceData.deviceId);
-})();
-
-// 获取全局共享价格数据 - 统一的数据访问入口
-if (typeof window !== 'undefined' && !window.getSharedPriceData) {
-  window.getSharedPriceData = function() {
-    try {
-      // 检查全局共享数据源是否存在且有效
-      if (!window.sharedPriceData || !window.sharedPriceData.data || !Array.isArray(window.sharedPriceData.data)) {
-        console.warn('全局共享数据源不存在或无效，返回空数组');
-        return [];
-      }
-      
-      // 返回数据的副本，避免直接修改原始数据
-      const dataCopy = JSON.parse(JSON.stringify(window.sharedPriceData.data));
-      
-      // 确保数据按日期降序排序
-      dataCopy.sort((a, b) => {
-        const dateA = new Date(a.date).getTime();
-        const dateB = new Date(b.date).getTime();
-        return dateB - dateA;
-      });
-      
-      console.log('获取全局共享价格数据，返回', dataCopy.length, '条记录');
-      return dataCopy;
-    } catch (error) {
-      console.error('获取全局共享价格数据时出错:', error);
-      return [];
-    }
-  };
-}
-
-// 更新全局共享价格数据
-export function updateSharedPriceData(newData, deviceId) {
-  try {
-    if (typeof window === 'undefined') {
-      console.error('无法在非浏览器环境中更新共享数据');
-      return false;
-    }
+    // 清理旧版本数据（重要：确保从全新状态开始）
+    cleanupOldData();
     
-    // 验证新数据的有效性
-    if (!newData || !Array.isArray(newData) || newData.length === 0) {
-      console.error('无效的新数据，必须是包含至少一条记录的数组');
-      return false;
-    }
+    // 加载数据
+    loadData();
     
-    // 验证数据格式
-    const isValidData = newData.every(item => 
-      item && 
-      typeof item.date === 'string' && 
-      typeof item.price === 'string' && 
-      /^\d{4}-\d{2}-\d{2}$/.test(item.date) && 
-      /^\d+$/.test(item.price)
-    );
+    // 设置事件监听器
+    setupEventListeners();
     
-    if (!isValidData) {
-      console.error('新数据格式不正确，必须包含有效的date和price字段');
-      return false;
-    }
-    
-    // 确定设备信息
-    const finalDeviceId = deviceId || 
-                         localStorage.getItem('deviceId') || 
-                         window.sharedPriceData.deviceId || 
-                         `device_${Date.now()}`;
-    
-    // 更新全局共享数据源
-    window.sharedPriceData = {
-      data: newData,
-      timestamp: Date.now(),
-      version: '1.0',
-      source: 'system',
-      deviceId: finalDeviceId,
-      lastSync: Date.now().toString()
-    };
-    
-    // 保存到localStorage作为持久化存储
-    try {
-      localStorage.setItem('priceData', JSON.stringify(newData));
-      localStorage.setItem('deviceId', finalDeviceId);
-      localStorage.setItem('lastPriceUpdate', window.sharedPriceData.timestamp.toString());
-      console.log('全局共享数据已保存到localStorage');
-    } catch (storageError) {
-      console.error('保存到localStorage失败:', storageError);
-    }
-    
-    // 触发全局数据更新事件
-    window.dispatchEvent(new CustomEvent('global-data-updated', {
-      detail: {
-        timestamp: window.sharedPriceData.timestamp,
-        deviceId: window.sharedPriceData.deviceId,
-        data: newData
-      }
-    }));
-    
-    console.log('全局共享价格数据已更新，记录数:', newData.length);
+    console.log('数据管理系统初始化成功');
     return true;
   } catch (error) {
-    console.error('更新全局共享价格数据时出错:', error);
+    console.error('初始化数据管理系统失败:', error);
     return false;
   }
 }
 
-// 为window对象添加updateSharedPriceData方法
-if (typeof window !== 'undefined' && !window.updateSharedPriceData) {
-  window.updateSharedPriceData = updateSharedPriceData;
+/**
+ * 清理旧版本数据
+ */
+function cleanupOldData() {
+  try {
+    // 清除所有可能的旧数据键
+    const oldKeys = [
+      'priceData', 
+      'lastPriceUpdate', 
+      'syncId', 
+      'lastSyncTime',
+      'coffee_price_data'
+    ];
+    
+    oldKeys.forEach(key => {
+      if (localStorage.getItem(key)) {
+        console.log(`清理旧数据: ${key}`);
+        localStorage.removeItem(key);
+      }
+    });
+    
+    // 清除sessionStorage中的相关数据
+    const oldSessionKeys = ['temp_price_data'];
+    oldSessionKeys.forEach(key => {
+      if (sessionStorage.getItem(key)) {
+        sessionStorage.removeItem(key);
+      }
+    });
+    
+    console.log('旧数据清理完成');
+  } catch (error) {
+    console.error('清理旧数据时出错:', error);
+  }
 }
 
-// 比较数据时间戳，判断新数据是否更新
-if (typeof window !== 'undefined' && !window.isDataNewer) {
-  window.isDataNewer = function(sourceTimestamp, targetTimestamp) {
-    try {
-      const source = parseInt(sourceTimestamp);
-      const target = parseInt(targetTimestamp || window.sharedPriceData.timestamp || 0);
+/**
+ * 从localStorage加载数据
+ */
+function loadData() {
+  try {
+    const storedDataStr = localStorage.getItem(DATA_CONFIG.STORAGE_KEY);
+    
+    if (storedDataStr) {
+      const storedData = JSON.parse(storedDataStr);
       
-      // 如果源时间戳大于目标时间戳，说明源数据更新
-      return source > target;
-    } catch (error) {
-      console.error('比较数据时间戳时出错:', error);
+      // 验证数据结构版本
+      if (storedData.version === DATA_CONFIG.DATA_VERSION) {
+        priceDataStore = {
+          version: storedData.version,
+          data: Array.isArray(storedData.data) ? storedData.data : [],
+          lastUpdated: storedData.lastUpdated || 0,
+          syncId: storedData.syncId || null
+        };
+        
+        // 确保数据按日期降序排序
+        sortDataByDate();
+        
+        console.log(`加载数据成功，共${priceDataStore.data.length}条记录`);
+      } else {
+        console.warn('检测到不兼容的数据版本，重新初始化数据');
+        resetData();
+      }
+    } else {
+      console.log('没有找到存储的数据，初始化空数据');
+      resetData();
+    }
+  } catch (error) {
+    console.error('加载数据时出错:', error);
+    resetData();
+  }
+}
+
+/**
+ * 重置数据为初始状态
+ */
+function resetData() {
+  priceDataStore = {
+    version: DATA_CONFIG.DATA_VERSION,
+    data: [],
+    lastUpdated: Date.now(),
+    syncId: generateSyncId()
+  };
+  
+  saveDataToStorage();
+}
+
+/**
+ * 生成唯一的同步ID
+ * @returns {string} 唯一的同步ID
+ */
+function generateSyncId() {
+  return `sync_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
+}
+
+/**
+ * 保存数据到localStorage
+ * @returns {boolean} 保存是否成功
+ */
+function saveDataToStorage() {
+  try {
+    const dataToSave = {
+      version: priceDataStore.version,
+      data: priceDataStore.data,
+      lastUpdated: priceDataStore.lastUpdated,
+      syncId: priceDataStore.syncId
+    };
+    
+    localStorage.setItem(DATA_CONFIG.STORAGE_KEY, JSON.stringify(dataToSave));
+    
+    // 更新全局时间戳
+    const now = Date.now();
+    localStorage.setItem('global_last_updated', String(now));
+    
+    console.log('数据已保存到localStorage');
+    return true;
+  } catch (error) {
+    console.error('保存数据到localStorage时出错:', error);
+    return false;
+  }
+}
+
+/**
+ * 获取最新价格数据
+ * @returns {Array} 价格数据数组的深拷贝
+ */
+export function getLatestPriceData() {
+  try {
+    // 检查数据是否过期，需要刷新
+    const now = Date.now();
+    if (now - priceDataStore.lastUpdated > DATA_CONFIG.CACHE_EXPIRE_TIME) {
+      // 触发数据刷新事件
+      triggerDataRefresh();
+    }
+    
+    // 返回数据的深拷贝，防止外部修改
+    return JSON.parse(JSON.stringify(priceDataStore.data));
+  } catch (error) {
+    console.error('获取最新价格数据时出错:', error);
+    return [];
+  }
+}
+
+/**
+ * 获取最新的价格记录
+ * @returns {Object|null} 最新的价格数据对象，如果没有数据则返回null
+ */
+export function getCurrentPrice() {
+  try {
+    const latestData = getLatestPriceData();
+    return latestData.length > 0 ? JSON.parse(JSON.stringify(latestData[0])) : null;
+  } catch (error) {
+    console.error('获取当前价格时出错:', error);
+    return null;
+  }
+}
+
+/**
+ * 获取指定日期的价格数据
+ * @param {string} date - 日期字符串，格式为YYYY-MM-DD
+ * @returns {Object|null} 价格数据对象，如果没有找到则返回null
+ */
+export function getPriceByDate(date) {
+  try {
+    if (!date || !DATA_CONFIG.VALIDATION_RULES.date.test(date)) {
+      console.error('无效的日期格式');
+      return null;
+    }
+    
+    const latestData = getLatestPriceData();
+    const priceData = latestData.find(item => item && item.date === date);
+    
+    return priceData ? JSON.parse(JSON.stringify(priceData)) : null;
+  } catch (error) {
+    console.error('获取指定日期价格数据时出错:', error);
+    return null;
+  }
+}
+
+/**
+ * 保存新的价格数据
+ * @param {Object} newPriceData - 新的价格数据对象
+ * @returns {boolean} 是否保存成功
+ */
+export function savePriceData(newPriceData) {
+  try {
+    console.log('尝试保存新的价格数据:', newPriceData);
+    
+    // 验证数据
+    if (!validatePriceData(newPriceData)) {
+      console.error('数据验证失败');
       return false;
     }
-  };
-}
-
-// 获取当前数据版本
-if (typeof window !== 'undefined' && !window.getPriceDataVersion) {
-  window.getPriceDataVersion = function() {
-    return window.sharedPriceData ? window.sharedPriceData.version : 'unknown';
-  };
-}
-
-// 同步价格数据 - 用于跨设备或跨页面同步
-if (typeof window !== 'undefined' && !window.syncPriceData) {
-  window.syncPriceData = function(data, source = 'unknown') {
-    try {
-      if (!data || !Array.isArray(data)) {
-        console.error('无效的同步数据');
-        return;
-      }
-      
-      // 获取当前共享数据的时间戳
-      const currentTimestamp = window.sharedPriceData.timestamp;
-      
-      // 尝试从同步数据中提取时间戳
-      let syncTimestamp = Date.now();
-      
-      // 查找同步数据中的最新时间戳
-      if (data.length > 0) {
-        const latestItem = data.reduce((latest, item) => {
-          const itemTimestamp = item.timestamp || 0;
-          const latestTimestamp = latest.timestamp || 0;
-          return itemTimestamp > latestTimestamp ? item : latest;
-        }, data[0]);
-        
-        if (latestItem && latestItem.timestamp) {
-          syncTimestamp = parseInt(latestItem.timestamp);
-        }
-      }
-      
-      // 只有当同步数据更新时才进行更新
-      if (syncTimestamp > currentTimestamp) {
-        console.log(`检测到更新的数据，当前时间戳: ${currentTimestamp}，同步时间戳: ${syncTimestamp}，来源: ${source}`);
-        window.updateSharedPriceData(data, null);
-      } else {
-        console.log(`同步数据不是最新的，当前时间戳: ${currentTimestamp}，同步时间戳: ${syncTimestamp}，跳过更新`);
-      }
-    } catch (error) {
-      console.error('同步价格数据时出错:', error);
+    
+    // 标准化数据
+    const normalizedData = normalizePriceData(newPriceData);
+    
+    // 检查是否已存在当天数据
+    const existingIndex = priceDataStore.data.findIndex(item => 
+      item && item.date === normalizedData.date
+    );
+    
+    if (existingIndex >= 0) {
+      // 更新现有数据
+      console.log(`更新${normalizedData.date}的数据`);
+      priceDataStore.data[existingIndex] = normalizedData;
+    } else {
+      // 添加新数据
+      console.log(`添加新数据: ${normalizedData.date}`);
+      priceDataStore.data.push(normalizedData);
     }
-  };
+    
+    // 按日期排序
+    sortDataByDate();
+    
+    // 限制历史记录数量
+    limitHistoryData();
+    
+    // 更新时间戳和同步ID
+    const now = Date.now();
+    priceDataStore.lastUpdated = now;
+    priceDataStore.syncId = generateSyncId();
+    
+    // 保存到存储
+    const saved = saveDataToStorage();
+    
+    if (saved) {
+      console.log('价格数据保存成功');
+      // 触发数据保存成功事件
+      triggerDataSaved(normalizedData);
+      return true;
+    } else {
+      console.error('价格数据保存失败');
+      return false;
+    }
+  } catch (error) {
+    console.error('保存价格数据时出错:', error);
+    return false;
+  }
 }
 
-// 提供广播频道支持，实现同一浏览器内的页面间同步
-function setupBroadcastChannel() {
-  if (typeof window === 'undefined' || typeof BroadcastChannel === 'undefined') {
-    console.warn('BroadcastChannel不支持，无法实现页面间实时同步');
-    return;
+/**
+ * 验证价格数据格式
+ * @param {Object} data - 要验证的价格数据
+ * @returns {boolean} 验证是否通过
+ */
+function validatePriceData(data) {
+  if (!data || typeof data !== 'object') {
+    return false;
   }
   
-  // 创建广播频道
-  const priceChannel = new BroadcastChannel('coffee-price-channel');
+  // 验证日期格式
+  if (!data.date || typeof data.date !== 'string' || 
+      !DATA_CONFIG.VALIDATION_RULES.date.test(data.date)) {
+    return false;
+  }
   
-  // 监听广播消息
-  priceChannel.addEventListener('message', (event) => {
-    try {
-      if (event.data.type === 'price-updated' && event.data.data) {
-        console.log('收到价格更新广播');
+  // 验证价格格式
+  if (data.price === undefined || data.price === null || 
+      (typeof data.price !== 'string' && typeof data.price !== 'number')) {
+    return false;
+  }
+  
+  // 转换为字符串进行验证
+  const priceStr = String(data.price);
+  if (!DATA_CONFIG.VALIDATION_RULES.price.test(priceStr)) {
+    return false;
+  }
+  
+  return true;
+}
+
+/**
+ * 标准化价格数据
+ * @param {Object} data - 要标准化的价格数据
+ * @returns {Object} 标准化后的价格数据
+ */
+function normalizePriceData(data) {
+  const now = Date.now();
+  
+  return {
+    date: data.date,
+    price: String(data.price),
+    timestamp: now,
+    syncSource: data.syncSource || 'local',
+    version: DATA_CONFIG.DATA_VERSION
+  };
+}
+
+/**
+ * 按日期降序排序数据
+ */
+function sortDataByDate() {
+  priceDataStore.data.sort((a, b) => {
+    if (!a || !a.date) return 1;
+    if (!b || !b.date) return -1;
+    return new Date(b.date) - new Date(a.date);
+  });
+}
+
+/**
+ * 限制历史数据量
+ */
+function limitHistoryData() {
+  if (priceDataStore.data.length > DATA_CONFIG.MAX_HISTORY_DAYS) {
+    priceDataStore.data = priceDataStore.data.slice(0, DATA_CONFIG.MAX_HISTORY_DAYS);
+    console.log(`历史数据已限制为${DATA_CONFIG.MAX_HISTORY_DAYS}条`);
+  }
+}
+
+/**
+ * 从外部源同步价格数据
+ * @param {Array} externalData - 外部价格数据数组
+ * @returns {boolean} 是否同步成功
+ */
+export function syncFromExternalData(externalData) {
+  try {
+    console.log('尝试从外部源同步价格数据，记录数:', externalData?.length || 0);
+    
+    if (!Array.isArray(externalData) || externalData.length === 0) {
+      console.error('无效的外部数据格式');
+      return false;
+    }
+    
+    let hasChanges = false;
+    const now = Date.now();
+    
+    externalData.forEach(externalItem => {
+      if (validatePriceData(externalItem)) {
+        const normalizedExternal = normalizePriceData(externalItem);
+        normalizedExternal.syncSource = 'external';
         
-        // 使用同步函数处理接收到的数据
-        window.syncPriceData(event.data.data, 'system');
+        // 查找对应的本地数据
+        const localIndex = priceDataStore.data.findIndex(item => 
+          item && item.date === normalizedExternal.date
+        );
         
-        // 触发价格数据更新事件，通知其他组件
-        window.dispatchEvent(new CustomEvent('price-data-updated', {
-          detail: {
-            data: event.data.data,
-            syncId: event.data.syncId
+        if (localIndex >= 0) {
+          // 比较时间戳，只接受更新的数据
+          const localItem = priceDataStore.data[localIndex];
+          if (!localItem.timestamp || normalizedExternal.timestamp > localItem.timestamp) {
+            priceDataStore.data[localIndex] = normalizedExternal;
+            hasChanges = true;
+            console.log(`更新日期${normalizedExternal.date}的数据（外部源时间戳更新）`);
           }
-        }));
+        } else {
+          // 添加新数据
+          priceDataStore.data.push(normalizedExternal);
+          hasChanges = true;
+          console.log(`从外部源添加新数据: ${normalizedExternal.date}`);
+        }
       }
-    } catch (error) {
-      console.error('处理广播消息时出错:', error);
+    });
+    
+    if (hasChanges) {
+      // 按日期排序
+      sortDataByDate();
+      
+      // 限制历史记录数量
+      limitHistoryData();
+      
+      // 更新时间戳和同步ID
+      priceDataStore.lastUpdated = now;
+      priceDataStore.syncId = generateSyncId();
+      
+      // 保存到存储
+      const saved = saveDataToStorage();
+      
+      if (saved) {
+        console.log('外部数据同步成功');
+        // 触发数据同步成功事件
+        triggerDataSynced();
+        return true;
+      }
+    } else {
+      console.log('外部数据与本地数据一致，无需同步');
     }
-  });
-  
-  // 在页面卸载时关闭广播频道
-  window.addEventListener('beforeunload', () => {
-    try {
-      priceChannel.close();
-      console.log('BroadcastChannel已关闭');
-    } catch (error) {
-      console.error('关闭BroadcastChannel时出错:', error);
-    }
-  });
-  
-  console.log('BroadcastChannel已设置完成，支持页面间同步');
+    
+    return false;
+  } catch (error) {
+    console.error('从外部源同步价格数据时出错:', error);
+    return false;
+  }
 }
 
-// 在DOM加载完成后设置广播频道
-if (typeof window !== 'undefined' && document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', setupBroadcastChannel);
-} else {
-  // 如果DOM已经加载完成，直接设置广播频道
-  setupBroadcastChannel();
+/**
+ * 强制刷新数据
+ * @returns {Array} 刷新后的价格数据数组
+ */
+export function refreshPriceData() {
+  try {
+    console.log('强制刷新价格数据');
+    
+    // 从存储重新加载数据
+    loadData();
+    
+    // 触发数据刷新事件
+    triggerDataRefresh();
+    
+    return getLatestPriceData();
+  } catch (error) {
+    console.error('刷新价格数据时出错:', error);
+    return [];
+  }
 }
 
-// 导出主要函数供其他模块使用
-export {
-  updateSharedPriceData
+/**
+ * 格式化价格数据用于显示
+ * @param {Object} priceData - 价格数据对象
+ * @returns {Object} 格式化后的价格数据对象
+ */
+export function formatPriceDataForDisplay(priceData) {
+  try {
+    if (!priceData || typeof priceData !== 'object') {
+      return null;
+    }
+    
+    // 格式化日期显示
+    const date = new Date(priceData.date);
+    const formattedDate = date.toLocaleDateString('zh-CN', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+    
+    // 格式化价格显示
+    const priceNum = parseFloat(priceData.price);
+    const formattedPrice = isNaN(priceNum) ? '0.00' : priceNum.toFixed(2);
+    
+    return {
+      date: priceData.date,
+      formattedDate: formattedDate,
+      price: priceData.price,
+      formattedPrice: formattedPrice,
+      timestamp: priceData.timestamp || null,
+      syncSource: priceData.syncSource || 'unknown'
+    };
+  } catch (error) {
+    console.error('格式化价格数据时出错:', error);
+    return null;
+  }
+}
+
+/**
+ * 设置事件监听器
+ */
+function setupEventListeners() {
+  if (typeof window === 'undefined') return;
+  
+  window.addEventListener('price-data-synced', handleDataSynced);
+  window.addEventListener('global-data-refresh', handleGlobalRefresh);
+  
+  // 监听localStorage变化，这是跨标签页/窗口同步的关键
+  window.addEventListener('storage', handleStorageChange);
+}
+
+/**
+ * 处理数据同步事件
+ */
+function handleDataSynced(event) {
+  try {
+    console.log('接收到数据同步事件，刷新数据');
+    refreshPriceData();
+  } catch (error) {
+    console.error('处理数据同步事件时出错:', error);
+  }
+}
+
+/**
+ * 处理全局数据刷新事件
+ */
+function handleGlobalRefresh(event) {
+  try {
+    console.log('接收到全局数据刷新事件，刷新数据');
+    refreshPriceData();
+  } catch (error) {
+    console.error('处理全局数据刷新事件时出错:', error);
+  }
+}
+
+/**
+ * 处理localStorage变化事件
+ */
+function handleStorageChange(event) {
+  try {
+    // 只处理相关的存储键变化
+    if (event.key === DATA_CONFIG.STORAGE_KEY || event.key === 'global_last_updated') {
+      console.log(`检测到localStorage变化: ${event.key}`);
+      
+      // 确保不是由当前页面引起的变化
+      if (event.newValue !== event.oldValue) {
+        // 延迟执行以避免频繁触发
+        setTimeout(() => {
+          refreshPriceData();
+        }, 100);
+      }
+    }
+  } catch (error) {
+    console.error('处理localStorage变化时出错:', error);
+  }
+}
+
+/**
+ * 触发数据刷新事件
+ */
+function triggerDataRefresh() {
+  if (typeof window === 'undefined') return;
+  
+  window.dispatchEvent(new CustomEvent('price-data-refreshed', {
+    detail: {
+      timestamp: Date.now(),
+      syncId: priceDataStore.syncId
+    }
+  }));
+}
+
+/**
+ * 触发数据保存成功事件
+ * @param {Object} data - 保存的数据
+ */
+function triggerDataSaved(data) {
+  if (typeof window === 'undefined') return;
+  
+  window.dispatchEvent(new CustomEvent('price-data-saved', {
+    detail: {
+      data: data,
+      timestamp: Date.now(),
+      syncId: priceDataStore.syncId
+    }
+  }));
+}
+
+/**
+ * 触发数据同步成功事件
+ */
+function triggerDataSynced() {
+  if (typeof window === 'undefined') return;
+  
+  window.dispatchEvent(new CustomEvent('price-data-synced', {
+    detail: {
+      timestamp: Date.now(),
+      syncId: priceDataStore.syncId
+    }
+  }));
+}
+
+/**
+ * 清理数据管理系统资源
+ */
+export function cleanupPriceSystem() {
+  try {
+    console.log('清理价格数据管理系统资源');
+    
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('price-data-synced', handleDataSynced);
+      window.removeEventListener('global-data-refresh', handleGlobalRefresh);
+      window.removeEventListener('storage', handleStorageChange);
+    }
+    
+    console.log('数据管理系统资源已清理');
+  } catch (error) {
+    console.error('清理数据管理系统资源时出错:', error);
+  }
+}
+
+/**
+ * 获取系统状态
+ * @returns {Object} 系统状态对象
+ */
+export function getSystemStatus() {
+  return {
+    version: DATA_CONFIG.DATA_VERSION,
+    recordCount: priceDataStore.data.length,
+    lastUpdated: priceDataStore.lastUpdated,
+    lastUpdatedHuman: new Date(priceDataStore.lastUpdated).toLocaleString('zh-CN'),
+    syncId: priceDataStore.syncId
+  };
+}
+
+// 初始化系统
+if (typeof window !== 'undefined') {
+  // 暴露核心API到全局
+  window.CoffeePriceSystem = {
+    init: initPriceSystem,
+    getLatestPriceData,
+    getCurrentPrice,
+    getPriceByDate,
+    savePriceData,
+    syncFromExternalData,
+    refreshPriceData,
+    formatPriceDataForDisplay,
+    getSystemStatus,
+    cleanup: cleanupPriceSystem,
+    version: DATA_CONFIG.DATA_VERSION
+  };
+  
+  // 页面卸载时清理资源
+  window.addEventListener('beforeunload', cleanupPriceSystem);
+  
+  // 自动初始化
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      setTimeout(initPriceSystem, 100);
+    });
+  } else {
+    // 如果DOM已加载，立即初始化
+    setTimeout(initPriceSystem, 100);
+  }
+}
+
+// 导出默认模块
+export default {
+  init: initPriceSystem,
+  getLatestPriceData,
+  getCurrentPrice,
+  getPriceByDate,
+  savePriceData,
+  syncFromExternalData,
+  refreshPriceData,
+  formatPriceDataForDisplay,
+  getSystemStatus,
+  cleanup: cleanupPriceSystem
 };
