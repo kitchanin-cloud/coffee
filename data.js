@@ -132,15 +132,10 @@ export function savePriceData(newPrice) {
     // 创建数据的深拷贝以避免修改原始数据
     const updatedData = [...allPriceData];
     
-    // 检测是否为移动设备
-    const isMobile = typeof navigator !== 'undefined' && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    const deviceType = isMobile ? 'mobile' : 'desktop';
-    
     // 确保价格数据包含必要的同步字段
     const enhancedPriceData = {
       ...newPrice,
       timestamp: newPrice.timestamp || Date.now(),
-      sourceDevice: newPrice.sourceDevice || deviceType,
       syncId: newPrice.syncId || `sync_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
     };
     
@@ -174,12 +169,12 @@ export function savePriceData(newPrice) {
         data: recentData,
         timestamp: Date.now(),
         version: '1.0',
-        source: deviceType,
+        source: 'system',
         deviceId: deviceId,
         lastSync: Date.now().toString()
       };
       
-      console.log('成功更新全局共享价格数据，设备类型:', deviceType);
+      console.log('成功更新全局共享价格数据');
     }
     
     // 2. 保存到localStorage（作为本地缓存）
@@ -199,8 +194,7 @@ export function savePriceData(newPrice) {
         priceChannel.postMessage({
           type: 'price-updated',
           data: recentData,
-          syncId: enhancedPriceData.syncId,
-          sourceDevice: enhancedPriceData.sourceDevice
+          syncId: enhancedPriceData.syncId
         });
         priceChannel.close();
         console.log('价格更新广播已发送，包含同步信息');
@@ -214,8 +208,7 @@ export function savePriceData(newPrice) {
       window.dispatchEvent(new CustomEvent('price-data-saved', {
         detail: {
           data: recentData,
-          syncId: enhancedPriceData.syncId,
-          sourceDevice: enhancedPriceData.sourceDevice
+          syncId: enhancedPriceData.syncId
         }
       }));
       

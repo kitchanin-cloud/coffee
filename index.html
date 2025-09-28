@@ -508,40 +508,7 @@
                             currentPriceElement.textContent = `¥${latestPrice} / ตัน (吨)`;
                             currentPriceElement.style.opacity = '1';
                             
-                            // 如果是来自同步的数据，显示同步来源信息
-                            if (isNewSync && latestRecord.sourceDevice) {
-                                // 先移除已有的通知元素
-                                const existingNotification = document.querySelector('.sync-source-notification');
-                                if (existingNotification && existingNotification.parentNode) {
-                                    existingNotification.parentNode.removeChild(existingNotification);
-                                }
-                                
-                                const syncSourceElement = document.createElement('div');
-                                syncSourceElement.className = 'sync-source-notification';
-                                syncSourceElement.textContent = `数据来自${latestRecord.sourceDevice === 'mobile' ? '移动端' : 'PC端'}更新`;
-                                syncSourceElement.style.position = 'absolute';
-                                syncSourceElement.style.top = '10px';
-                                syncSourceElement.style.right = '10px';
-                                syncSourceElement.style.background = 'rgba(76, 175, 80, 0.9)';
-                                syncSourceElement.style.color = 'white';
-                                syncSourceElement.style.padding = '5px 10px';
-                                syncSourceElement.style.borderRadius = '4px';
-                                syncSourceElement.style.fontSize = '12px';
-                                syncSourceElement.style.zIndex = '1000';
-                                
-                                currentPriceElement.parentNode.appendChild(syncSourceElement);
-                                
-                                // 3秒后移除通知
-                                setTimeout(() => {
-                                    syncSourceElement.style.opacity = '0';
-                                    syncSourceElement.style.transition = 'opacity 0.5s ease';
-                                    setTimeout(() => {
-                                        if (syncSourceElement.parentNode) {
-                                            syncSourceElement.parentNode.removeChild(syncSourceElement);
-                                        }
-                                    }, 500);
-                                }, 3000);
-                            }
+                            // 已移除数据来源提示，保持界面简洁
                         }, 200);
                     } else {
                         console.warn('No price data available');
