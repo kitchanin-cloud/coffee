@@ -24,8 +24,8 @@
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
             color: white;
             overflow-x: hidden;
-            /* 恢复原始的背景设置，使用scroll而不是fixed来避免移动浏览器优化问题 */
-            background-image: url('images/9.9.1.gif');
+            /* 使用原始的index页面背景图 */
+            background-image: url('images/9.9.2.gif');
             background-position: center;
             background-repeat: no-repeat;
             background-size: cover;
@@ -126,19 +126,16 @@
         }
 
         .buttons button {
-            background-color: rgba(255, 223, 193, 0.25);
-            border: 2px solid rgba(255, 223, 193, 0.7);
+            background-color: rgba(255, 223, 193, 0.2);
+            border: 1px solid rgba(255, 223, 193, 0.5);
             color: #FFDDC1;
-            padding: 16px 32px;
+            padding: 15px 30px;
             border-radius: 50px;
             font-size: 1em;
-            font-weight: 600;
             cursor: pointer;
             transition: all 0.3s ease;
             position: relative;
             overflow: hidden;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
         }
 
         .buttons button:before {
@@ -148,45 +145,18 @@
             left: -100%;
             width: 100%;
             height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 223, 193, 0.2), transparent);
-            transition: all 0.6s ease;
+            background: linear-gradient(90deg, transparent, rgba(255, 223, 193, 0.1), transparent);
+            transition: all 0.5s ease;
         }
 
         .buttons button:hover {
-            background-color: rgba(255, 223, 193, 0.4);
-            transform: translateY(-4px);
-            box-shadow: 0 8px 25px rgba(255, 223, 193, 0.4);
-            border-color: rgba(255, 223, 193, 0.9);
+            background-color: rgba(255, 223, 193, 0.3);
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(255, 223, 193, 0.3);
         }
 
         .buttons button:hover:before {
             left: 100%;
-        }
-
-        /* 为中间按钮添加额外的强调效果 */
-        .buttons button:nth-child(2) {
-            position: relative;
-            z-index: 1;
-        }
-
-        .buttons button:nth-child(2):after {
-            content: '';
-            position: absolute;
-            bottom: -4px;
-            left: 10%;
-            width: 80%;
-            height: 4px;
-            background: linear-gradient(90deg, transparent, #FFDDC1, transparent);
-            border-radius: 50%;
-            opacity: 0;
-            transition: all 0.3s ease;
-            z-index: -1;
-        }
-
-        .buttons button:nth-child(2):hover:after {
-            opacity: 1;
-            bottom: -6px;
-            height: 6px;
         }
 
         footer {
@@ -270,9 +240,9 @@
             }
             
             .buttons button {
-                padding: 12px 20px;
+                padding: 15px 30px;
                 font-size: 0.85em;
-                border-width: 1.5px;
+                border-width: 1px;
             }
 
             /* 移动设备上的中间按钮效果 */
