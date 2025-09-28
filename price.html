@@ -1,8 +1,17 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- 添加防缓存控制 -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    
+    <!-- 引入全局共享数据管理和同步脚本 -->
+    <script src="./test_price_data.js"></script>
+    <script src="./test_price_sync.js"></script>
+    
     <title>咖啡价格管理</title>
     <style>
         * {
@@ -312,7 +321,7 @@
             }
 
             // 表单提交事件处理
-        priceForm.addEventListener('submit', (event) => {
+        priceForm.addEventListener('submit', async (event) => {
             event.preventDefault();
             
             const coffeePrice = document.getElementById('coffee-price').value;
@@ -331,32 +340,37 @@
 
             console.log('提交的价格数据:', newPriceData);
 
-            // 确保savePriceData是一个函数
-            if (typeof savePriceData !== 'function') {
-                console.error('无法访问savePriceData函数');
-                showNotification('保存失败，请刷新页面重试', false);
-                return;
-            }
-
-            // 使用同步方式处理保存和同步，避免异步操作导致的URL更新不及时
-            try {
-                // 同步保存价格数据
-                const saveResult = savePriceData(newPriceData);
-                if (saveResult) {
-                    console.log('价格数据保存成功，开始同步...');
+            // 使用统一数据系统保存数据
+            const saveData = async () => {
+                try {
+                    let saveResult = false;
                     
-                    // 构造用于同步的数据对象
-                    const syncPriceData = {
-                        price: priceValue,
-                        currency: 'CNY',
-                        unit: '吨'
-                    };
+                    // 优先使用PriceSyncAPI
+                    if (window.PriceSyncAPI && typeof window.PriceSyncAPI.saveAndSyncPriceData === 'function') {
+                        saveResult = await window.PriceSyncAPI.saveAndSyncPriceData(newPriceData);
+                    } else if (typeof savePriceData === 'function') {
+                        // 兼容旧版保存函数
+                        saveResult = savePriceData(newPriceData);
+                    } else {
+                        throw new Error('数据保存函数不可用');
+                    }
                     
-                    // 调用同步函数，传入完整的价格数据对象
-                    if (window.saveAndSyncPriceData) {
-                        // 执行同步操作 - 确保生成包含完整数据的URL
-                        const syncResult = window.saveAndSyncPriceData(syncPriceData);
-                        console.log('同步操作结果:', syncResult);
+                    if (saveResult) {
+                        console.log('价格数据保存成功，开始同步...');
+                        
+                        // 构造用于同步的数据对象
+                        const syncPriceData = {
+                            price: priceValue,
+                            currency: 'CNY',
+                            unit: '吨'
+                        };
+                        
+                        // 调用同步函数，传入完整的价格数据对象
+                        if (window.PriceSyncAPI && typeof window.PriceSyncAPI.syncPriceData === 'function') {
+                            await window.PriceSyncAPI.syncPriceData(syncPriceData);
+                        } else if (window.saveAndSyncPriceData) {
+                            await window.saveAndSyncPriceData(syncPriceData);
+                        }
                         
                         // 不管同步结果如何，都显示成功并跳转
                         showNotification('价格更新成功！\n正在跳转到首页...', true);
@@ -396,29 +410,42 @@
                             window.location.href = 'index.html';
                         }, 1500);
                     } else {
-                        showNotification('价格已更新，但无法同步', true);
-                        console.log('同步函数不可用，数据仅保存在本地');
-                        setTimeout(() => {
-                            window.location.href = 'index.html';
-                        }, 1500);
+                        showNotification('保存失败，请重试', false);
+                        console.error('价格数据保存失败');
                     }
-                } else {
-                    showNotification('保存失败，请重试', false);
-                    console.error('价格数据保存失败');
+                } catch (error) {
+                    console.error('保存价格数据时出错:', error);
+                    showNotification('数据保存失败，请刷新页面后重试', false);
                 }
-            } catch (error) {
-                console.error('保存价格数据时出错:', error);
-                showNotification('数据保存失败，请刷新页面后重试', false);
-            }
+            };
+            
+            saveData();
         });
         });
         </script>
         
-        <!-- 增强页面加载时的数据同步 -->
+        <!-- 增强页面加载时的数据同步 - 与统一数据系统集成 -->
         <script type="module">
             document.addEventListener('DOMContentLoaded', () => {
+                console.log('price.html - 初始化数据同步系统');
+                
+                // 初始化PriceSyncAPI（如果尚未初始化）
+                if (window.PriceSyncAPI && typeof window.PriceSyncAPI.init === 'function') {
+                    try {
+                        window.PriceSyncAPI.init();
+                        console.log('price.html - PriceSyncAPI 初始化成功');
+                    } catch (error) {
+                        console.warn('price.html - PriceSyncAPI 初始化失败:', error);
+                    }
+                }
+                
                 // 页面加载时检查URL哈希中的数据
-                if (window.parseDataFromUrlHash) {
+                if (window.PriceSyncAPI && typeof window.PriceSyncAPI.parseDataFromUrlHash === 'function') {
+                    const hasSyncedFromHash = window.PriceSyncAPI.parseDataFromUrlHash();
+                    if (hasSyncedFromHash) {
+                        console.log('成功从URL哈希同步数据');
+                    }
+                } else if (window.parseDataFromUrlHash) {
                     const hasSyncedFromHash = window.parseDataFromUrlHash();
                     if (hasSyncedFromHash) {
                         console.log('成功从URL哈希同步数据');
@@ -429,7 +456,9 @@
                 if (window.sharedPriceData) {
                     console.log('检测到全局共享数据源已就绪');
                     // 立即尝试同步
-                    if (typeof window.syncFromSharedData === 'function') {
+                    if (window.PriceSyncAPI && typeof window.PriceSyncAPI.syncFromSharedData === 'function') {
+                        window.PriceSyncAPI.syncFromSharedData();
+                    } else if (typeof window.syncFromSharedData === 'function') {
                         window.syncFromSharedData();
                     }
                 }
@@ -438,10 +467,18 @@
                 window.addEventListener('global-data-updated', function(event) {
                     console.log('接收到全局数据更新通知:', event.detail);
                     // 尝试从全局共享数据源同步
-                    if (typeof window.syncFromSharedData === 'function') {
+                    if (window.PriceSyncAPI && typeof window.PriceSyncAPI.syncFromSharedData === 'function') {
+                        window.PriceSyncAPI.syncFromSharedData();
+                    } else if (typeof window.syncFromSharedData === 'function') {
                         window.syncFromSharedData();
                     }
                 });
+                
+                // 输出同步状态信息
+                if (window.PriceSyncAPI && typeof window.PriceSyncAPI.getSyncStatus === 'function') {
+                    const syncStatus = window.PriceSyncAPI.getSyncStatus();
+                    console.log('当前数据同步状态:', syncStatus);
+                }
             });
         </script>
         

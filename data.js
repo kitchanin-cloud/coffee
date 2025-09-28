@@ -1,5 +1,7 @@
-// 咖啡豆价格历史数据
-// 基础价格历史数据 - 从9月21日到8月21日的30天数据，价格范围50000-65000
+// 统一咖啡豆价格数据管理系统
+// 为PC端和移动端提供一致的数据访问和管理
+
+// 基础价格数据 - 从9月21日到8月21日的30天数据，价格范围50000-65000
 const basePriceData = [
   { date: '2025-09-21', price: '58723' },
   { date: '2025-09-20', price: '59412' },
@@ -35,105 +37,92 @@ const basePriceData = [
   { date: '2025-08-21', price: '58432' }
 ];
 
-// 获取最新的价格数据（优先使用共享数据源，确保跨设备同步）
+// 初始化全局共享数据源 - 确保PC端和移动端使用同一个数据
+if (typeof window !== 'undefined') {
+  // 初始化共享数据源对象
+  if (!window.sharedPriceData) {
+    // 优先使用localStorage中的数据，如果没有则使用基础数据
+    const storedData = localStorage.getItem('priceData');
+    const initialData = storedData ? JSON.parse(storedData) : basePriceData;
+    
+    // 创建统一的全局共享数据源
+    window.sharedPriceData = {
+      data: initialData,
+      timestamp: Date.now(),
+      version: '1.0',
+      source: storedData ? 'localStorage' : 'baseData',
+      lastSync: localStorage.getItem('lastPriceUpdate') || Date.now().toString()
+    };
+    
+    console.log('全局共享数据源初始化完成，数据源类型:', window.sharedPriceData.source);
+  }
+  
+  // 为全局数据源添加统一的访问方法
+  window.getSharedPriceData = function() {
+    return window.sharedPriceData ? window.sharedPriceData.data : [];
+  };
+  
+  window.updateSharedPriceData = function(newData, deviceId, sourceDevice) {
+    if (typeof window !== 'undefined') {
+      window.sharedPriceData = {
+        data: newData,
+        timestamp: Date.now(),
+        version: '1.0',
+        source: sourceDevice || 'unknown',
+        deviceId: deviceId || localStorage.getItem('deviceId') || `device_${Date.now()}`,
+        lastSync: Date.now().toString()
+      };
+      console.log('全局共享数据源已更新，更新源:', window.sharedPriceData.source);
+      return true;
+    }
+    return false;
+  };
+}
+
+// 获取最新价格数据 - 统一的入口函数
 export function getLatestPriceData() {
   try {
-    console.log('Getting latest price data with cross-device sync support...');
+    console.log('获取最新价格数据，支持跨设备同步...');
     
-    let finalData = [];
-    
-    // 1. 优先从全局共享数据源获取数据（用于跨设备同步）
+    // 1. 优先使用全局共享数据源（确保PC和移动端使用同一个数据）
     if (typeof window !== 'undefined' && window.sharedPriceData && window.sharedPriceData.data) {
-      console.log('Using sharedPriceData as primary data source');
-      finalData = [...window.sharedPriceData.data];
+      console.log('使用全局共享数据源作为主要数据源');
+      return [...window.sharedPriceData.data].sort((a, b) => new Date(b.date) - new Date(a.date));
     }
     
-    // 2. 创建日期到价格的映射，以便快速更新或添加数据
-    const priceMap = new Map();
-    
-    // 先将共享数据添加到映射中
-    finalData.forEach(item => {
-      if (item && item.date && item.price) {
-        priceMap.set(item.date, { ...item });
-      }
-    });
-    
-    // 3. 如果共享数据源为空，使用基础数据
-    if (finalData.length === 0) {
-      basePriceData.forEach(item => {
-        if (item && item.date && item.price) {
-          priceMap.set(item.date, { ...item });
-        }
-      });
-      console.log('Base data loaded, records:', basePriceData.length);
-    }
-    
-    // 4. 然后尝试从localStorage获取数据并合并
+    // 2. 尝试从localStorage获取
+    let storedData = null;
     try {
-      const storedDataStr = localStorage.getItem('priceData');
-      if (storedDataStr) {
-        const storedPriceData = JSON.parse(storedDataStr);
-        if (Array.isArray(storedPriceData) && storedPriceData.length > 0) {
-          // 添加或更新localStorage中的数据
-          storedPriceData.forEach(item => {
-            if (item && item.date && item.price) {
-              // 检查是否需要更新现有记录
-              const existingItem = priceMap.get(item.date);
-              const storedTimestamp = parseInt(item.timestamp || '0');
-              const existingTimestamp = existingItem && existingItem.timestamp ? parseInt(existingItem.timestamp) : 0;
-              
-              // 只在新数据更新时才更新
-              if (!existingItem || storedTimestamp > existingTimestamp) {
-                priceMap.set(item.date, { ...item });
-              }
-            }
-          });
-          console.log('Local storage data merged with timestamp comparison');
+      storedData = localStorage.getItem('priceData');
+      if (storedData) {
+        const parsedData = JSON.parse(storedData);
+        if (Array.isArray(parsedData) && parsedData.length > 0) {
+          console.log('从localStorage获取价格数据');
+          return parsedData.sort((a, b) => new Date(b.date) - new Date(a.date));
         }
       }
-    } catch (localStorageError) {
-      console.warn('Error reading from localStorage:', localStorageError);
+    } catch (e) {
+      console.error('解析localStorage数据出错:', e);
     }
     
-    // 5. 将映射转换回数组并按日期降序排序
-    const mergedData = Array.from(priceMap.values())
-      .filter(item => item && item.date && item.price) // 确保数据完整性
-      .sort((a, b) => new Date(b.date) - new Date(a.date));
-    
-    console.log('Final merged data, total records:', mergedData.length);
-    
-    // 6. 确保返回的数组不为空
-    if (!Array.isArray(mergedData) || mergedData.length === 0) {
-      console.warn('Merged data is empty, returning base data');
-      return [...basePriceData].sort((a, b) => new Date(b.date) - new Date(a.date));
-    }
-    
-    return mergedData;
+    // 3. 使用默认数据
+    console.log('使用默认价格数据');
+    return [...basePriceData].sort((a, b) => new Date(b.date) - new Date(a.date));
   } catch (error) {
-    console.error('Error getting latest price data:', error);
+    console.error('获取价格数据时出错:', error);
     // 出错时回退到使用基础数据
     return [...basePriceData].sort((a, b) => new Date(b.date) - new Date(a.date));
   }
 }
 
-// 创建BroadcastChannel用于页面间通信
-let priceChannel;
-
-// 初始化BroadcastChannel
-function initPriceChannel() {
-  if (!priceChannel && typeof BroadcastChannel !== 'undefined') {
-    priceChannel = new BroadcastChannel('coffee-price-channel');
-  }
-}
-
-// 保存新的价格数据 - 增强版，实现全局数据同步，确保所有设备使用同一组数据
+// 统一的保存价格数据函数 - 确保所有设备使用同一组数据
 export function savePriceData(newPrice) {
   try {
-    console.log('Attempting to save price data with global sync support:', newPrice);
+    console.log('尝试保存价格数据，包含全局同步支持:', newPrice);
     
     // 验证新价格数据的完整性
     if (!newPrice || !newPrice.date || !newPrice.price) {
-      console.error('Invalid price data:', newPrice);
+      console.error('无效的价格数据:', newPrice);
       return false;
     }
     
@@ -144,7 +133,7 @@ export function savePriceData(newPrice) {
     const updatedData = [...allPriceData];
     
     // 检测是否为移动设备
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    const isMobile = typeof navigator !== 'undefined' && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
     const deviceType = isMobile ? 'mobile' : 'desktop';
     
     // 确保价格数据包含必要的同步字段
@@ -159,25 +148,13 @@ export function savePriceData(newPrice) {
     const todayIndex = updatedData.findIndex(item => item && item.date === enhancedPriceData.date);
     
     if (todayIndex >= 0) {
-      // 更新现有记录 - 检查是否真的需要更新
-      const currentRecord = updatedData[todayIndex];
-      const currentTimestamp = parseInt(currentRecord.timestamp || '0');
-      const newTimestamp = parseInt(enhancedPriceData.timestamp);
-      
-      // 只在新数据更新或来源更可靠时才更新
-      if (newTimestamp > currentTimestamp || 
-          (newTimestamp === currentTimestamp && enhancedPriceData.sourceDevice === 'mobile')) {
-        updatedData[todayIndex] = enhancedPriceData;
-        console.log('Updated existing record for date:', enhancedPriceData.date, 'with newer data');
-      } else {
-        console.log('Skipping update - existing record is newer or equally recent');
-        // 如果数据没有变化，仍返回true表示保存成功
-        return true;
-      }
+      // 更新现有记录
+      updatedData[todayIndex] = enhancedPriceData;
+      console.log('更新日期为', enhancedPriceData.date, '的现有记录');
     } else {
       // 添加新记录到数组开头
       updatedData.unshift(enhancedPriceData);
-      console.log('Added new record for date:', enhancedPriceData.date);
+      console.log('添加日期为', enhancedPriceData.date, '的新记录');
     }
     
     // 按日期降序排序
@@ -185,19 +162,24 @@ export function savePriceData(newPrice) {
     
     // 只保留最新的90条数据
     const recentData = updatedData.slice(0, 90);
-    console.log('Final data after processing, records:', recentData.length);
+    console.log('处理后的数据总数:', recentData.length);
     
     // 1. 更新全局共享数据源（关键步骤，确保所有设备使用同一组数据）
-    if (typeof window !== 'undefined' && window.updateSharedPriceData) {
+    if (typeof window !== 'undefined') {
       const deviceId = localStorage.getItem('deviceId') || `device_${Date.now()}`;
       localStorage.setItem('deviceId', deviceId); // 保存设备ID以供后续使用
       
-      const updateResult = window.updateSharedPriceData(recentData, deviceId, deviceType);
-      if (updateResult) {
-        console.log('Successfully updated global shared price data');
-      } else {
-        console.warn('Failed to update global shared price data');
-      }
+      // 直接更新window.sharedPriceData对象
+      window.sharedPriceData = {
+        data: recentData,
+        timestamp: Date.now(),
+        version: '1.0',
+        source: deviceType,
+        deviceId: deviceId,
+        lastSync: Date.now().toString()
+      };
+      
+      console.log('成功更新全局共享价格数据，设备类型:', deviceType);
     }
     
     // 2. 保存到localStorage（作为本地缓存）
@@ -205,21 +187,26 @@ export function savePriceData(newPrice) {
       localStorage.setItem('priceData', JSON.stringify(recentData));
       // 存储最后更新时间戳，用于跨设备同步比较
       localStorage.setItem('lastPriceUpdate', Date.now().toString());
-      console.log('Price data successfully saved to localStorage with sync timestamp');
+      console.log('价格数据已成功保存到localStorage，并添加了同步时间戳');
     } catch (storageError) {
-      console.error('Error saving to localStorage:', storageError);
+      console.error('保存到localStorage出错:', storageError);
     }
     
     // 3. 发送广播通知同一浏览器的其他页面数据已更新
-    initPriceChannel();
-    if (priceChannel) {
-      priceChannel.postMessage({ 
-        type: 'price-updated', 
-        data: recentData,
-        syncId: enhancedPriceData.syncId,
-        sourceDevice: enhancedPriceData.sourceDevice
-      });
-      console.log('Price update broadcast sent with sync info');
+    if (typeof BroadcastChannel !== 'undefined') {
+      try {
+        const priceChannel = new BroadcastChannel('coffee-price-channel');
+        priceChannel.postMessage({
+          type: 'price-updated',
+          data: recentData,
+          syncId: enhancedPriceData.syncId,
+          sourceDevice: enhancedPriceData.sourceDevice
+        });
+        priceChannel.close();
+        console.log('价格更新广播已发送，包含同步信息');
+      } catch (broadcastError) {
+        console.error('发送广播通知出错:', broadcastError);
+      }
     }
     
     // 4. 触发全局自定义事件，便于其他脚本监听价格更新
@@ -231,61 +218,25 @@ export function savePriceData(newPrice) {
           sourceDevice: enhancedPriceData.sourceDevice
         }
       }));
+      
       window.dispatchEvent(new CustomEvent('global-data-updated', {
         detail: {
           timestamp: Date.now(),
-          syncId: enhancedPriceData.syncId
+          syncId: enhancedPriceData.syncId,
+          data: recentData
         }
       }));
-      console.log('Price data saved events dispatched');
-    }
-    
-    // 5. 主动刷新所有页面数据（通过URL参数触发）
-    if (typeof window !== 'undefined') {
-      try {
-        const timestamp = Date.now();
-        const forceSyncUrl = `${window.location.origin}${window.location.pathname}?sync=true&t=${timestamp}#forceSync`;
-        // 使用replaceState而不是直接跳转，避免历史记录堆积
-        window.history.replaceState({}, document.title, forceSyncUrl);
-        console.log('Force sync URL set to trigger data refresh on all devices');
-      } catch (urlError) {
-        console.warn('Failed to update URL for force sync:', urlError);
-      }
+      
+      console.log('价格数据已保存并触发相关事件');
     }
     
     return true;
   } catch (error) {
-    console.error('Error saving price data:', error);
+    console.error('保存价格数据时出错:', error);
     return false;
   }
 }
 
-// 监听价格数据更新通知
-export function listenForPriceUpdates(callback) {
-  initPriceChannel();
-  if (priceChannel) {
-    priceChannel.addEventListener('message', (event) => {
-      if (event.data.type === 'price-updated') {
-        callback(event.data.data);
-      }
-    });
-  }
-  
-  // 清理函数
-  return function cleanup() {
-    if (priceChannel) {
-      priceChannel.close();
-      priceChannel = null;
-    }
-  };
-}
-
-// 辅助函数：保留最新的90条价格数据 - 现在简化为调用savePriceData以确保一致性
-function keepLatest90Records(newPrice) {
-  // 直接调用savePriceData函数以确保所有数据更新逻辑一致
-  return savePriceData(newPrice);
-}
-
 // 为了保持向后兼容性，继续导出原始的priceData
-const priceData = basePriceData;
+const priceData = getLatestPriceData();
 export { priceData };
