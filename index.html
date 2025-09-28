@@ -494,7 +494,7 @@
                     if (Array.isArray(allPriceData) && allPriceData.length > 0) {
                         const latestPrice = allPriceData[0].price;
                         const latestRecord = allPriceData[0];
-                        console.log('Latest price:', latestPrice, '来源:', latestRecord.sourceDevice || '未知');
+                        console.log('Latest price:', latestPrice);
                         
                         // 确保显示最新价格，无论是否有变化
                         currentPriceElement.style.opacity = '0.5';

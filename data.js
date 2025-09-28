@@ -62,17 +62,17 @@ if (typeof window !== 'undefined') {
     return window.sharedPriceData ? window.sharedPriceData.data : [];
   };
   
-  window.updateSharedPriceData = function(newData, deviceId, sourceDevice) {
+  window.updateSharedPriceData = function(newData, deviceId) {
     if (typeof window !== 'undefined') {
       window.sharedPriceData = {
         data: newData,
         timestamp: Date.now(),
         version: '1.0',
-        source: sourceDevice || 'unknown',
+        source: 'system',
         deviceId: deviceId || localStorage.getItem('deviceId') || `device_${Date.now()}`,
         lastSync: Date.now().toString()
       };
-      console.log('全局共享数据源已更新，更新源:', window.sharedPriceData.source);
+      console.log('全局共享数据源已更新');
       return true;
     }
     return false;

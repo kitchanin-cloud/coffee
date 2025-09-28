@@ -95,7 +95,7 @@ function parseDataFromUrlHash() {
 }
 
 // 保存并同步价格数据
-function saveAndSyncPriceData(priceData, deviceType = 'unknown') {
+function saveAndSyncPriceData(priceData) {
   try {
     console.log('开始保存并同步价格数据...');
     
@@ -105,18 +105,10 @@ function saveAndSyncPriceData(priceData, deviceType = 'unknown') {
       return false;
     }
     
-    // 检测设备类型
-    const finalDeviceType = deviceType === 'unknown' && typeof navigator !== 'undefined' 
-      ? (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent) ? 'mobile' : 'desktop') 
-      : deviceType;
-    
-    console.log(`同步来源设备类型: ${finalDeviceType}`);
-    
     // 增强价格数据，添加同步信息
     const enhancedData = {
       ...priceData,
       timestamp: Date.now(),
-      sourceDevice: finalDeviceType,
       syncId: generateSyncId(),
       version: CONFIG.SYNC_VERSION
     };
@@ -151,7 +143,7 @@ function saveAndSyncPriceData(priceData, deviceType = 'unknown') {
     
     // 2. 更新全局共享数据源
     const updateResult = window.updateSharedPriceData ? 
-      window.updateSharedPriceData(limitedData, deviceId, finalDeviceType) : false;
+      window.updateSharedPriceData(limitedData, deviceId) : false;
     
     if (!updateResult) {
       console.error('更新全局共享数据源失败');
@@ -183,7 +175,6 @@ function saveAndSyncPriceData(priceData, deviceType = 'unknown') {
       detail: {
         data: limitedData,
         syncId: enhancedData.syncId,
-        sourceDevice: finalDeviceType,
         timestamp: enhancedData.timestamp
       }
     }));
@@ -201,7 +192,6 @@ function saveAndSyncPriceData(priceData, deviceType = 'unknown') {
       syncHistory.unshift({
         syncId: enhancedData.syncId,
         timestamp: Date.now(),
-        sourceDevice: finalDeviceType,
         dataCount: limitedData.length
       });
       // 只保留最近100条同步记录
@@ -428,7 +418,6 @@ function getSyncStatus() {
       sharedTimestamp: window.sharedPriceData?.timestamp || 0,
       lastLocalSync: localStorage.getItem(CONFIG.STORAGE_KEYS.LAST_SYNC) || 0,
       deviceId: localStorage.getItem(CONFIG.STORAGE_KEYS.DEVICE_ID) || 'unknown',
-      isMobile: typeof navigator !== 'undefined' && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent),
       version: CONFIG.SYNC_VERSION,
       isPolling: !!pollIntervalId,
       pollInterval: CONFIG.POLL_INTERVAL

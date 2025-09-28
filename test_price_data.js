@@ -1,26 +1,7 @@
 // 全局咖啡豆价格共享数据管理
 // 提供统一的数据访问和同步机制，确保PC端和移动端使用同一个数据
 
-// 为window对象添加类型声明，便于TypeScript和IDE识别
-declare global {
-  interface Window {
-    sharedPriceData: {
-      data: Array<{date: string, price: string, timestamp?: number, sourceDevice?: string, syncId?: string}>,
-      timestamp: number,
-      version: string,
-      source: string,
-      deviceId?: string,
-      lastSync: string
-    };
-    getSharedPriceData: () => Array<{date: string, price: string, timestamp?: number, sourceDevice?: string, syncId?: string}>;
-    updateSharedPriceData: (data: Array<{date: string, price: string}>, deviceId?: string, sourceDevice?: string) => boolean;
-    
-    // 用于数据同步的辅助方法
-    syncPriceData: (data: any, source: string) => void;
-    isDataNewer: (sourceTimestamp: number, targetTimestamp?: number) => boolean;
-    getPriceDataVersion: () => string;
-  }
-}
+// 注意：此文件使用JavaScript语法而非TypeScript，移除了TypeScript特定语法以确保兼容性
 
 // 初始化全局共享数据源 - 确保所有页面和设备使用统一的数据
 (function() {
@@ -106,8 +87,8 @@ if (typeof window !== 'undefined' && !window.getSharedPriceData) {
   };
 }
 
-// 更新全局共享价格数据 - 支持设备类型标记
-export function updateSharedPriceData(newData, deviceId, sourceDevice = 'unknown') {
+// 更新全局共享价格数据
+export function updateSharedPriceData(newData, deviceId) {
   try {
     if (typeof window === 'undefined') {
       console.error('无法在非浏览器环境中更新共享数据');
@@ -140,17 +121,12 @@ export function updateSharedPriceData(newData, deviceId, sourceDevice = 'unknown
                          window.sharedPriceData.deviceId || 
                          `device_${Date.now()}`;
     
-    // 检测设备类型（如果未提供）
-    const finalSourceDevice = sourceDevice === 'unknown' && typeof navigator !== 'undefined' 
-      ? (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent) ? 'mobile' : 'desktop') 
-      : sourceDevice;
-    
     // 更新全局共享数据源
     window.sharedPriceData = {
       data: newData,
       timestamp: Date.now(),
       version: '1.0',
-      source: finalSourceDevice,
+      source: 'system',
       deviceId: finalDeviceId,
       lastSync: Date.now().toString()
     };
@@ -170,12 +146,11 @@ export function updateSharedPriceData(newData, deviceId, sourceDevice = 'unknown
       detail: {
         timestamp: window.sharedPriceData.timestamp,
         deviceId: window.sharedPriceData.deviceId,
-        source: window.sharedPriceData.source,
         data: newData
       }
     }));
     
-    console.log('全局共享价格数据已更新，来源设备:', finalSourceDevice, '，记录数:', newData.length);
+    console.log('全局共享价格数据已更新，记录数:', newData.length);
     return true;
   } catch (error) {
     console.error('更新全局共享价格数据时出错:', error);
@@ -242,7 +217,7 @@ if (typeof window !== 'undefined' && !window.syncPriceData) {
       // 只有当同步数据更新时才进行更新
       if (syncTimestamp > currentTimestamp) {
         console.log(`检测到更新的数据，当前时间戳: ${currentTimestamp}，同步时间戳: ${syncTimestamp}，来源: ${source}`);
-        window.updateSharedPriceData(data, null, source);
+        window.updateSharedPriceData(data, null);
       } else {
         console.log(`同步数据不是最新的，当前时间戳: ${currentTimestamp}，同步时间戳: ${syncTimestamp}，跳过更新`);
       }
@@ -266,17 +241,16 @@ function setupBroadcastChannel() {
   priceChannel.addEventListener('message', (event) => {
     try {
       if (event.data.type === 'price-updated' && event.data.data) {
-        console.log('收到价格更新广播，来源设备:', event.data.sourceDevice);
+        console.log('收到价格更新广播');
         
         // 使用同步函数处理接收到的数据
-        window.syncPriceData(event.data.data, event.data.sourceDevice);
+        window.syncPriceData(event.data.data, 'system');
         
         // 触发价格数据更新事件，通知其他组件
         window.dispatchEvent(new CustomEvent('price-data-updated', {
           detail: {
             data: event.data.data,
-            syncId: event.data.syncId,
-            source: event.data.sourceDevice
+            syncId: event.data.syncId
           }
         }));
       }
