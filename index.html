@@ -126,16 +126,19 @@
         }
 
         .buttons button {
-            background-color: rgba(255, 223, 193, 0.2);
-            border: 1px solid rgba(255, 223, 193, 0.5);
+            background-color: rgba(255, 223, 193, 0.25);
+            border: 2px solid rgba(255, 223, 193, 0.7);
             color: #FFDDC1;
-            padding: 15px 30px;
+            padding: 16px 32px;
             border-radius: 50px;
             font-size: 1em;
+            font-weight: 600;
             cursor: pointer;
             transition: all 0.3s ease;
             position: relative;
             overflow: hidden;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
         .buttons button:before {
@@ -145,18 +148,45 @@
             left: -100%;
             width: 100%;
             height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 223, 193, 0.1), transparent);
-            transition: all 0.5s ease;
+            background: linear-gradient(90deg, transparent, rgba(255, 223, 193, 0.2), transparent);
+            transition: all 0.6s ease;
         }
 
         .buttons button:hover {
-            background-color: rgba(255, 223, 193, 0.3);
-            transform: translateY(-3px);
-            box-shadow: 0 5px 15px rgba(255, 223, 193, 0.3);
+            background-color: rgba(255, 223, 193, 0.4);
+            transform: translateY(-4px);
+            box-shadow: 0 8px 25px rgba(255, 223, 193, 0.4);
+            border-color: rgba(255, 223, 193, 0.9);
         }
 
         .buttons button:hover:before {
             left: 100%;
+        }
+
+        /* 为中间按钮添加额外的强调效果 */
+        .buttons button:nth-child(2) {
+            position: relative;
+            z-index: 1;
+        }
+
+        .buttons button:nth-child(2):after {
+            content: '';
+            position: absolute;
+            bottom: -4px;
+            left: 10%;
+            width: 80%;
+            height: 4px;
+            background: linear-gradient(90deg, transparent, #FFDDC1, transparent);
+            border-radius: 50%;
+            opacity: 0;
+            transition: all 0.3s ease;
+            z-index: -1;
+        }
+
+        .buttons button:nth-child(2):hover:after {
+            opacity: 1;
+            bottom: -6px;
+            height: 6px;
         }
 
         footer {
@@ -241,7 +271,19 @@
             
             .buttons button {
                 padding: 12px 20px;
-                font-size: 0.9em;
+                font-size: 0.85em;
+                border-width: 1.5px;
+            }
+
+            /* 移动设备上的中间按钮效果 */
+            .buttons button:nth-child(2):after {
+                height: 3px;
+                bottom: -3px;
+            }
+
+            .buttons button:nth-child(2):hover:after {
+                height: 4px;
+                bottom: -4px;
             }
             
             .modal-content {
@@ -379,14 +421,15 @@
             console.log('index.html - 初始化全新数据同步系统');
             
             // 确保全局数据系统已初始化
-            if (window.CoffeePriceSystem && typeof window.CoffeePriceSystem.initialize === 'function') {
-                window.CoffeePriceSystem.initialize();
+            if (window.CoffeePriceSystem && typeof window.CoffeePriceSystem.init === 'function') {
+                console.log('初始化CoffeePriceSystem');
+                window.CoffeePriceSystem.init();
             }
             
             // 初始化同步系统
-            if (window.PriceSyncAPI && typeof window.PriceSyncAPI.initialize === 'function') {
-                window.PriceSyncAPI.initialize();
-            }
+            if (window.PriceSyncAPI && typeof window.PriceSyncAPI.init === 'function') {
+                    window.PriceSyncAPI.init();
+                }
             
             // 检查URL参数，判断是否需要强制刷新
             const urlParams = new URLSearchParams(window.location.search);
@@ -554,14 +597,9 @@
                     if (window.CoffeePriceSystem && typeof window.CoffeePriceSystem.getLatestPrice === 'function') {
                         const latestPrice = window.CoffeePriceSystem.getLatestPrice();
                         console.log('Latest price from CoffeePriceSystem:', latestPrice);
-                          
-                        // 确保显示最新价格，无论是否有变化
-                        currentPriceElement.style.opacity = '0.5';
-                        
-                        setTimeout(() => {
-                            currentPriceElement.textContent = `¥${latestPrice} / ตัน (吨)`;
-                            currentPriceElement.style.opacity = '1';
-                        }, 200);
+                           
+                        // 直接更新价格，避免不必要的透明度变化
+                        currentPriceElement.textContent = `¥${latestPrice} / ตัน (吨)`;
                     } else {
                         // 使用新的统一数据层
                         if (window.CoffeePriceData && typeof window.CoffeePriceData.getLatestPriceData === 'function') {
@@ -572,13 +610,8 @@
                                 const latestPrice = allPriceData[0].price;
                                 console.log('Latest price from CoffeePriceData:', latestPrice);
                                   
-                                // 确保显示最新价格，无论是否有变化
-                                currentPriceElement.style.opacity = '0.5';
-                                
-                                setTimeout(() => {
-                                    currentPriceElement.textContent = `¥${latestPrice} / ตัน (吨)`;
-                                    currentPriceElement.style.opacity = '1';
-                                }, 200);
+                                // 直接更新价格，避免不必要的透明度变化
+                                currentPriceElement.textContent = `¥${latestPrice} / ตัน (吨)`;
                             } else {
                                 console.warn('No price data available, using default');
                                 // 如果没有数据，使用默认价格
@@ -602,9 +635,9 @@
                 console.log('初始化增强版价格同步机制（v3.0）...');
                 
                 // 使用新的同步系统进行同步
-                if (window.PriceSyncAPI && typeof window.PriceSyncAPI.sync === 'function') {
+                if (window.PriceSyncAPI && typeof window.PriceSyncAPI.init === 'function') {
                     console.log('Using PriceSyncAPI v3.0 for synchronization');
-                    window.PriceSyncAPI.sync();
+                    window.PriceSyncAPI.init();
                 }
                 
                 // 前5秒内频繁检查，提高移动端提交后的同步速度
@@ -615,10 +648,7 @@
                     
                     // 使用新的同步系统强制同步
                     if (window.PriceSyncAPI && typeof window.PriceSyncAPI.sync === 'function') {
-                        window.PriceSyncAPI.sync({
-                            force: true,
-                            sourcePriority: ['url', 'localStorage', 'sharedData']
-                        });
+                        window.PriceSyncAPI.sync();
                     }
                     
                     if (checkCount >= 10) { // 前5秒每秒检查2次
@@ -629,6 +659,8 @@
                         startRegularSync();
                     }
                 }, 500);
+                
+                cleanupFunctions.push(() => clearInterval(quickCheckTimer));
             }
             
             // 启动定期同步机制

@@ -11,7 +11,6 @@
     <!-- 引入全局共享数据管理和同步脚本 -->
     <script src="./test_price_data.js"></script>
     <script src="./test_price_sync.js"></script>
-    <script src="./data.js"></script>
     
     <!-- 数据同步优化脚本 - 与统一数据系统集成 -->
     <script>
@@ -20,9 +19,9 @@
         console.log('history.html - 初始化数据同步系统');
         
         // 初始化CoffeePriceSystem，如果已在全局定义
-        if (window.CoffeePriceSystem) {
+        if (window.CoffeePriceSystem && typeof window.CoffeePriceSystem.init === 'function') {
             console.log('初始化CoffeePriceSystem');
-            window.CoffeePriceSystem.initialize();
+            window.CoffeePriceSystem.init();
         }
         
         // 检查URL参数，判断是否需要强制刷新
@@ -35,7 +34,7 @@
             console.log('检测到需要强制刷新数据的条件');
             setTimeout(() => {
                 if (window.PriceSyncAPI && typeof window.PriceSyncAPI.sync === 'function') {
-                    window.PriceSyncAPI.sync({ force: true });
+                    window.PriceSyncAPI.sync();
                 } else if (typeof window.forceRefreshData === 'function') {
                     window.forceRefreshData();
                 } else {
@@ -59,9 +58,12 @@
             padding: 20px; /* 为页面添加一些边距 */
             color: white;
             overflow-x: hidden;
-            /* 确保这里的路径 'images/R.gif' 是正确的 */
-            background: url('images/c01.jpg') no-repeat center center fixed;
+            /* 恢复原始的背景设置，使用scroll而不是fixed来避免移动浏览器优化问题 */
+            background-image: url('images/9.9.1.gif');
+            background-position: center;
+            background-repeat: no-repeat;
             background-size: cover;
+            background-attachment: scroll;
             min-height: 100vh;
         }
 
@@ -490,14 +492,8 @@
             // 监听价格数据更新（跨设备同步）
             function handlePriceUpdate(event) {
                 console.log('检测到价格更新，刷新历史记录显示...');
-                // 添加平滑过渡效果
-                const tableBody = document.getElementById('history-data-body');
-                tableBody.style.opacity = '0.5';
-
-                setTimeout(() => {
-                    renderPage(currentPage);
-                    tableBody.style.opacity = '1';
-                }, 300);
+                // 直接刷新数据，避免闪屏
+                renderPage(currentPage);
             }
 
             // 添加对多种同步相关事件的监听
@@ -534,14 +530,13 @@
                         }
                     }
 
-                    // 尝试使用PriceSyncAPI
-                    if (window.PriceSyncAPI && typeof window.PriceSyncAPI.getPriceData === 'function') {
-                        const syncData = window.PriceSyncAPI.getPriceData();
-                        if (Array.isArray(syncData) && syncData.length > 0) {
-                            console.log('从PriceSyncAPI获取到数据，记录数:', syncData.length);
-                            return syncData.sort((a, b) => new Date(b.date) - new Date(a.date));
-                        }
+                    // 尝试使用PriceSyncAPI的getStatus方法获取同步状态
+                    if (window.PriceSyncAPI && typeof window.PriceSyncAPI.getStatus === 'function') {
+                        const syncStatus = window.PriceSyncAPI.getStatus();
+                        console.log('从PriceSyncAPI获取到同步状态:', syncStatus);
                     }
+                    
+                    // 从localStorage获取数据作为后备
 
                     // 从localStorage获取数据作为后备
                     let storedData = null;
@@ -651,6 +646,11 @@
                 console.log('初始化增强版价格同步机制...');
                 
                 // 如果有PriceSyncAPI，使用它的同步功能
+                if (window.PriceSyncAPI && typeof window.PriceSyncAPI.init === 'function') {
+                    // 初始化同步系统
+                    window.PriceSyncAPI.init();
+                }
+                
                 if (window.PriceSyncAPI && typeof window.PriceSyncAPI.sync === 'function') {
                     // 立即执行一次同步
                     window.PriceSyncAPI.sync();
@@ -663,7 +663,7 @@
                     console.log(`快速同步检查 #${checkCount}`);
                     
                     if (window.PriceSyncAPI && typeof window.PriceSyncAPI.sync === 'function') {
-                        window.PriceSyncAPI.sync({ quickCheck: true });
+                        window.PriceSyncAPI.sync();
                     }
                     
                     if (checkCount >= 10) { // 前5秒每秒检查2次
