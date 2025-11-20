@@ -345,8 +345,8 @@ function attemptSyncFromExternalSources() {
         console.log('从URL获取到同步数据，准备保存');
         
         // 尝试使用全局保存函数保存数据
-        if (window.CoffeePriceSystem && window.CoffeePriceSystem.savePriceData) {
-          const saved = window.CoffeePriceSystem.savePriceData({
+        if (window.CoffeePriceData && window.CoffeePriceData.savePriceData) {
+          const saved = window.CoffeePriceData.savePriceData({
             date: urlData.date || new Date().toISOString().split('T')[0],
             price: urlData.price,
             syncSource: 'url'
@@ -740,8 +740,8 @@ window.PriceSyncAPI = {
   // 保存并同步价格数据的便捷方法
   saveAndSyncPriceData: function(data) {
     try {
-      if (window.CoffeePriceSystem && window.CoffeePriceSystem.savePriceData) {
-        const saved = window.CoffeePriceSystem.savePriceData(data);
+      if (window.CoffeePriceData && window.CoffeePriceData.savePriceData) {
+        const saved = window.CoffeePriceData.savePriceData(data);
         if (saved) {
           // 立即触发同步，确保数据尽快传播到所有设备
           setTimeout(() => forceSyncAllData(), 100);

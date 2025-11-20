@@ -299,10 +299,12 @@
         
         <script type="module">
         // 从数据文件导入价格数据和函数
-        import { priceData, savePriceData } from './data.js';
-        
+        // 注意：主要使用test_price_data.js，但保留data.js作为兼容
+        // 由于test_price_data.js使用全局API，这里主要依赖全局对象
         // 将savePriceData函数暴露给全局作用域，以便跨设备同步工具可以访问
-        window.savePriceData = savePriceData;
+        if (window.CoffeePriceData && window.CoffeePriceData.savePriceData) {
+            window.savePriceData = window.CoffeePriceData.savePriceData;
+        }
         
 
         document.addEventListener('DOMContentLoaded', () => {
