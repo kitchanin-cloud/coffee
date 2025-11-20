@@ -375,7 +375,11 @@
             console.log('=== 设置表单处理函数 ===');
             const priceForm = document.getElementById('price-form');
             const notification = document.getElementById('notification');
-            const currentDate = new Date().toISOString().split('T')[0]; // 获取当前日期，格式为YYYY-MM-DD
+            // 使用本地时间而不是UTC时间来获取当前日期
+            const now = new Date();
+            const currentDate = now.getFullYear() + '-' + 
+                              String(now.getMonth() + 1).padStart(2, '0') + '-' + 
+                              String(now.getDate()).padStart(2, '0'); // 获取当前日期，格式为YYYY-MM-DD
             
             // 验证表单元素是否存在
             if (!priceForm) {

@@ -621,9 +621,11 @@
 
                 if (pageData && pageData.length > 0) {
                     pageData.forEach(record => {
+                        // 使用添加时间作为日期显示
+                        const displayDate = record.addTime ? record.addTime.split(' ')[0] : record.date;
                         const row = document.createElement('tr');
                         row.innerHTML = `
-                            <td>${record.date}</td>
+                            <td>${displayDate}</td>
                             <td>¥ ${record.price}</td>
                         `;
                         tableBody.appendChild(row);

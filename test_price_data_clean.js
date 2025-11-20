@@ -210,40 +210,25 @@ function savePriceData(newPriceData) {
       priceDataStore.data = [];
     }
     
-    // 检查是否已存在当天数据
-    const existingIndex = priceDataStore.data.findIndex(item => 
-      item && item.date === newPriceData.date
-    );
+    // 添加新数据（不检查重复，允许同一天有多个记录）
+    console.log(`添加新数据: ${newPriceData.date}`);
+    priceDataStore.data.push({
+      ...newPriceData,
+      timestamp: Date.now()
+    });
+    console.log(`数据已添加，当前数据总数: ${priceDataStore.data.length}`);
     
-    if (existingIndex >= 0) {
-      // 更新现有数据
-      console.log(`更新${newPriceData.date}的数据，索引: ${existingIndex}`);
-      priceDataStore.data[existingIndex] = {
-        ...priceDataStore.data[existingIndex],
-        ...newPriceData,
-        timestamp: Date.now()
-      };
-    } else {
-      // 添加新数据
-      console.log(`添加新数据: ${newPriceData.date}`);
-      priceDataStore.data.push({
-        ...newPriceData,
-        timestamp: Date.now()
-      });
-      console.log(`数据已添加，当前数据总数: ${priceDataStore.data.length}`);
-    }
-    
-    // 按日期降序排序
+    // 按时间戳降序排序（最新的在前）
     priceDataStore.data.sort((a, b) => {
-      if (!a || !a.date) return 1;
-      if (!b || !b.date) return -1;
-      return new Date(b.date) - new Date(a.date);
+      if (!a || !a.timestamp) return 1;
+      if (!b || !b.timestamp) return -1;
+      return b.timestamp - a.timestamp;
     });
     
-    // 限制历史记录数量为90天
-    if (priceDataStore.data.length > 90) {
-      priceDataStore.data = priceDataStore.data.slice(0, 90);
-      console.log('历史数据已限制为90条');
+    // 限制历史记录数量为300条（足够保存30天内每天多个记录）
+    if (priceDataStore.data.length > 300) {
+      priceDataStore.data = priceDataStore.data.slice(0, 300);
+      console.log('历史数据已限制为300条');
     }
     
     // 标记有未保存的更改
@@ -339,11 +324,71 @@ function setupEventListeners() {
 }
 
 /**
- * 获取价格数据
- * @returns {Array} 价格数据数组
+ * 获取价格数据（去重并限制为最近30天）
+ * @returns {Array} 去重后的最近30天价格数据数组
  */
 function getPriceData() {
-  return [...priceDataStore.data]; // 返回副本以防止外部修改
+  // 获取所有数据的副本
+  const allData = [...priceDataStore.data];
+  
+  // 按时间戳降序排序（最新的在前）
+  allData.sort((a, b) => {
+    if (!a || !a.timestamp) return 1;
+    if (!b || !b.timestamp) return -1;
+    return b.timestamp - a.timestamp;
+  });
+  
+  // 用于存储每个日期最新的数据
+  const uniqueDataMap = new Map();
+  
+  // 遍历数据，保留每个日期最新的记录
+  for (const item of allData) {
+    if (item && item.date) {
+      // 如果该日期还没有记录，或者当前记录的时间戳更新，则保存
+      if (!uniqueDataMap.has(item.date) || item.timestamp > uniqueDataMap.get(item.date).timestamp) {
+        uniqueDataMap.set(item.date, item);
+      }
+    }
+  }
+  
+  // 转换为数组并按日期降序排序
+  const uniqueData = Array.from(uniqueDataMap.values());
+  uniqueData.sort((a, b) => {
+    if (!a || !a.date) return 1;
+    if (!b || !b.date) return -1;
+    return new Date(b.date) - new Date(a.date);
+  });
+  
+  // 限制为最近30天
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  
+  const recentData = uniqueData.filter(item => {
+    const itemDate = new Date(item.date);
+    return itemDate >= thirtyDaysAgo;
+  });
+  
+  // 为每个数据项添加格式化的添加时间
+  const recentDataWithTimestamp = recentData.map(item => {
+    // 添加时间格式化
+    const addTime = new Date(item.timestamp);
+    const formattedAddTime = addTime.toLocaleString('zh-CN', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    }).replace(/\//g, '-');
+    
+    return {
+      ...item,
+      addTime: formattedAddTime
+    };
+  });
+  
+  console.log(`获取到${recentDataWithTimestamp.length}条最近30天的去重数据`);
+  return recentDataWithTimestamp;
 }
 
 /**
