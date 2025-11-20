@@ -103,10 +103,16 @@
             color: #FFEB3B;
             margin-bottom: 20px;
             display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
-            flex-wrap: wrap;
-            gap: 15px;
+            gap: 5px;
+        }
+        
+        .price .price-label span {
+            display: block;
+            text-align: center;
+            font-weight: bold;
         }
 
         .price .price-value {
@@ -126,9 +132,9 @@
         }
 
         .buttons button {
-            background-color: rgba(255, 223, 193, 0.15);
-            border: 1px solid rgba(255, 223, 193, 0.4);
-            color: #FFDDC1;
+            background-color: #FFEB3B;
+            border: 1px solid #FFEB3B;
+            color: white;
             padding: 12px 25px;
             border-radius: 50px;
             font-size: 1em;
@@ -150,9 +156,9 @@
         }
 
         .buttons button:hover {
-            background-color: rgba(255, 223, 193, 0.25);
+            background-color: #FFC107;
             transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(255, 223, 193, 0.25);
+            box-shadow: 0 4px 12px rgba(255, 235, 59, 0.4);
         }
 
         .buttons button:hover:before {
@@ -228,6 +234,9 @@
             
             .price .price-label span {
                 font-size: 1.2em;
+                display: block;
+                text-align: center;
+                font-weight: bold;
             }
             
             .price .price-value {
@@ -340,13 +349,13 @@
             <div class="buttons">
                 <button onclick="window.location.href='history.html'">
                     <span class="lang-en">Price History</span>
-                    <span class="lang-th">ประวัติราคา</span>
-                    <span class="lang-zh">查询往日价格</span>
+                    <span class="lang-th" style="display: none;">ประวัติราคา</span>
+                    <span class="lang-zh" style="display: none;">查询往日价格</span>
                 </button>
                 <button id="contact-btn">
                     <span class="lang-en">Contact Info</span>
-                    <span class="lang-th">ข้อมูลติดต่อ</span>
-                    <span class="lang-zh">联系信息</span>
+                    <span class="lang-th" style="display: none;">ข้อมูลติดต่อ</span>
+                    <span class="lang-zh" style="display: none;">联系信息</span>
                 </button>
             </div>
         </div>
