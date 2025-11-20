@@ -615,6 +615,8 @@ window.CoffeePriceData.formatPriceDataForDisplay = function(priceData) {
   }
 }
 
+// 移除了ES6模块导出语法，改为直接在全局作用域中定义
+
 /**
  * 设置事件监听器
  */
@@ -755,16 +757,16 @@ window.CoffeePriceData.getSystemStatus = function() {
 if (typeof window !== 'undefined') {
   // 暴露核心API到全局
   window.CoffeePriceSystem = {
-    init: window.CoffeePriceData.initPriceSystem,
-    getLatestPriceData: window.CoffeePriceData.getLatestPriceData,
-    getCurrentPrice: window.CoffeePriceData.getCurrentPrice,
-    getPriceByDate: window.CoffeePriceData.getPriceByDate,
-    savePriceData: window.CoffeePriceData.savePriceData,
-    syncFromExternalData: window.CoffeePriceData.syncFromExternalData,
-    refreshPriceData: window.CoffeePriceData.refreshPriceData,
-    formatPriceDataForDisplay: window.CoffeePriceData.formatPriceDataForDisplay,
-    getSystemStatus: window.CoffeePriceData.getSystemStatus,
-    cleanup: window.CoffeePriceData.cleanupPriceSystem,
+    init: window.CoffeePriceData ? window.CoffeePriceData.initPriceSystem : function() { return false; },
+    getLatestPriceData: window.CoffeePriceData ? window.CoffeePriceData.getLatestPriceData : function() { return []; },
+    getCurrentPrice: window.CoffeePriceData ? window.CoffeePriceData.getCurrentPrice : function() { return null; },
+    getPriceByDate: window.CoffeePriceData ? window.CoffeePriceData.getPriceByDate : function() { return null; },
+    savePriceData: window.CoffeePriceData ? window.CoffeePriceData.savePriceData : function() { return false; },
+    syncFromExternalData: window.CoffeePriceData ? window.CoffeePriceData.syncFromExternalData : function() { return false; },
+    refreshPriceData: window.CoffeePriceData ? window.CoffeePriceData.refreshPriceData : function() { return []; },
+    formatPriceDataForDisplay: window.CoffeePriceData ? window.CoffeePriceData.formatPriceDataForDisplay : function() { return null; },
+    getSystemStatus: window.CoffeePriceData ? window.CoffeePriceData.getSystemStatus : function() { return {}; },
+    cleanup: window.CoffeePriceData ? window.CoffeePriceData.cleanupPriceSystem : function() {},
     version: DATA_CONFIG.DATA_VERSION
   };
   
@@ -781,17 +783,3 @@ if (typeof window !== 'undefined') {
     setTimeout(window.CoffeePriceData.initPriceSystem, 100);
   }
 }
-
-// 导出默认模块
-export default {
-  init: window.CoffeePriceData ? window.CoffeePriceData.initPriceSystem : function() { return false; },
-  getLatestPriceData: window.CoffeePriceData ? window.CoffeePriceData.getLatestPriceData : function() { return []; },
-  getCurrentPrice: window.CoffeePriceData ? window.CoffeePriceData.getCurrentPrice : function() { return null; },
-  getPriceByDate: window.CoffeePriceData ? window.CoffeePriceData.getPriceByDate : function() { return null; },
-  savePriceData: window.CoffeePriceData ? window.CoffeePriceData.savePriceData : function() { return false; },
-  syncFromExternalData: window.CoffeePriceData ? window.CoffeePriceData.syncFromExternalData : function() { return false; },
-  refreshPriceData: window.CoffeePriceData ? window.CoffeePriceData.refreshPriceData : function() { return []; },
-  formatPriceDataForDisplay: window.CoffeePriceData ? window.CoffeePriceData.formatPriceDataForDisplay : function() { return null; },
-  getSystemStatus: window.CoffeePriceData ? window.CoffeePriceData.getSystemStatus : function() { return {}; },
-  cleanup: window.CoffeePriceData ? window.CoffeePriceData.cleanupPriceSystem : function() {}
-};

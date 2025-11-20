@@ -4,8 +4,8 @@
 (function() {
     'use strict';
     
-    // 同步配置
-    const SYNC_CONFIG = {
+    // 同步配置 (重命名为ENHANCED_SYNC_CONFIG以避免冲突)
+    const ENHANCED_SYNC_CONFIG = {
         // 同步方式优先级
         methods: ['url', 'broadcast', 'storage', 'polling'],
         // 轮询间隔（毫秒）
@@ -20,7 +20,7 @@
     let broadcastChannel = null;
     if (typeof BroadcastChannel !== 'undefined') {
         try {
-            broadcastChannel = new BroadcastChannel(SYNC_CONFIG.CHANNEL_NAME);
+            broadcastChannel = new BroadcastChannel(ENHANCED_SYNC_CONFIG.CHANNEL_NAME);
             console.log('BroadcastChannel已创建');
         } catch (e) {
             console.warn('BroadcastChannel创建失败:', e);
@@ -120,7 +120,7 @@
             } catch (e) {
                 console.error('轮询检查失败:', e);
             }
-        }, SYNC_CONFIG.POLL_INTERVAL);
+        }, ENHANCED_SYNC_CONFIG.POLL_INTERVAL);
         
         console.log('数据轮询已启动');
     }
@@ -139,7 +139,7 @@
     function readFromURL() {
         try {
             const urlParams = new URLSearchParams(window.location.search);
-            const dataStr = urlParams.get(SYNC_CONFIG.URL_DATA_KEY);
+            const dataStr = urlParams.get(ENHANCED_SYNC_CONFIG.URL_DATA_KEY);
             if (dataStr) {
                 const decoded = decodeURIComponent(dataStr);
                 const data = JSON.parse(decoded);
@@ -198,20 +198,39 @@
      */
     function syncData(data) {
         console.log('=== 开始多方式同步数据 ===');
+        
         const results = {
-            url: null,
+            url: false,
             broadcast: false,
             storage: false
         };
         
-        // 方式1: URL参数
-        results.url = syncViaURL(data);
+        // URL参数同步
+        try {
+            const urlResult = syncViaURL(data);
+            if (urlResult) {
+                results.url = true;
+                console.log('URL同步成功');
+            }
+        } catch (e) {
+            console.error('URL同步失败:', e);
+        }
         
-        // 方式2: BroadcastChannel
-        results.broadcast = syncViaBroadcast(data);
+        // BroadcastChannel同步
+        try {
+            const broadcastResult = syncViaBroadcast(data);
+            results.broadcast = broadcastResult;
+        } catch (e) {
+            console.error('BroadcastChannel同步失败:', e);
+        }
         
-        // 方式3: localStorage
-        results.storage = syncViaStorage(data);
+        // localStorage同步
+        try {
+            const storageResult = syncViaStorage(data);
+            results.storage = storageResult;
+        } catch (e) {
+            console.error('localStorage同步失败:', e);
+        }
         
         console.log('同步结果:', results);
         return results;
@@ -221,51 +240,48 @@
      * 统一监听接口 - 设置所有监听器
      */
     function setupListeners(callback) {
-        // 监听URL参数
-        const urlData = readFromURL();
-        if (urlData) {
-            setTimeout(() => {
-                if (callback) callback(urlData);
-            }, 100);
-        }
-        
-        // 监听BroadcastChannel
+        // 设置BroadcastChannel监听器
         setupBroadcastListener(callback);
         
-        // 监听storage事件
+        // 设置storage事件监听器
         setupStorageListener(callback);
         
-        // 启动轮询
+        // 启动轮询检查
         startPolling(callback);
+        
+        console.log('所有监听器已设置');
     }
     
     /**
      * 清理资源
      */
     function cleanup() {
+        // 停止轮询
         stopPolling();
+        
+        // 关闭BroadcastChannel
         if (broadcastChannel) {
-            broadcastChannel.close();
-            broadcastChannel = null;
+            try {
+                broadcastChannel.close();
+                console.log('BroadcastChannel已关闭');
+            } catch (e) {
+                console.error('关闭BroadcastChannel失败:', e);
+            }
         }
     }
+    
+    // 页面卸载时清理资源
+    window.addEventListener('beforeunload', cleanup);
     
     // 导出全局API
     window.PriceSyncEnhanced = {
         sync: syncData,
         setupListeners: setupListeners,
         readFromURL: readFromURL,
-        startPolling: startPolling,
-        stopPolling: stopPolling,
-        cleanup: cleanup,
         version: '4.0'
     };
     
-    // 页面卸载时清理
-    if (typeof window !== 'undefined') {
-        window.addEventListener('beforeunload', cleanup);
-    }
+    console.log('增强版价格同步系统 v4.0 已加载');
     
-    console.log('增强版价格同步系统已加载 v4.0');
 })();
 
