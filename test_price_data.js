@@ -189,6 +189,9 @@ window.CoffeePriceData.getLatestPriceData = function() {
       triggerDataRefresh();
     }
     
+    // 确保数据按日期降序排序（最新的在前）
+    sortDataByDate();
+    
     // 返回数据的深拷贝，防止外部修改
     return JSON.parse(JSON.stringify(priceDataStore.data));
   } catch (error) {
@@ -449,6 +452,9 @@ window.CoffeePriceData.refreshPriceData = function() {
     
     // 从存储重新加载数据
     loadData();
+    
+    // 确保数据按日期排序
+    sortDataByDate();
     
     // 触发数据刷新事件
     triggerDataRefresh();

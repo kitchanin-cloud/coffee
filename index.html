@@ -564,15 +564,40 @@
                     // 使用CoffeePriceData获取数据
                     if (window.CoffeePriceData && typeof window.CoffeePriceData.getCurrentPrice === 'function') {
                         const latestPrice = window.CoffeePriceData.getCurrentPrice();
-                        if (latestPrice) {
-                            console.log('Latest price from CoffeePriceData:', latestPrice);
+                        if (latestPrice && latestPrice.price) {
+                            console.log('Latest price from CoffeePriceData.getCurrentPrice:', latestPrice);
+                            console.log('Latest price date:', latestPrice.date);
                                
                             // 直接更新价格，避免不必要的透明度变化
                             currentPriceElement.textContent = `¥${latestPrice.price} / ตัน (吨)`;
                         } else {
-                            console.warn('No price data available, using default');
-                            // 如果没有数据，使用默认价格
-                            currentPriceElement.textContent = '¥58723 / ตัน (吨)';
+                            console.warn('No price data available from getCurrentPrice, trying getLatestPriceData...');
+                            // 如果getCurrentPrice返回空，尝试使用getLatestPriceData
+                            if (window.CoffeePriceData && typeof window.CoffeePriceData.getLatestPriceData === 'function') {
+                                const allPriceData = window.CoffeePriceData.getLatestPriceData();
+                                console.log('Total price records from getLatestPriceData:', allPriceData.length);
+                                  
+                                if (Array.isArray(allPriceData) && allPriceData.length > 0) {
+                                    // 确保数据已排序，取第一个（最新的）
+                                    const sortedData = allPriceData.sort((a, b) => {
+                                        if (!a || !a.date) return 1;
+                                        if (!b || !b.date) return -1;
+                                        return new Date(b.date) - new Date(a.date);
+                                    });
+                                    const latestPrice = sortedData[0];
+                                    console.log('Latest price from getLatestPriceData:', latestPrice);
+                                    console.log('Latest price date:', latestPrice.date);
+                                      
+                                    // 直接更新价格，避免不必要的透明度变化
+                                    currentPriceElement.textContent = `¥${latestPrice.price} / ตัน (吨)`;
+                                } else {
+                                    console.warn('No price data available, using default');
+                                    currentPriceElement.textContent = '¥58723 / ตัน (吨)';
+                                }
+                            } else {
+                                console.warn('No price data available, using default');
+                                currentPriceElement.textContent = '¥58723 / ตัน (吨)';
+                            }
                         }
                     } else {
                         // 使用新的统一数据层
@@ -581,11 +606,18 @@
                             console.log('Total price records:', allPriceData.length);
                               
                             if (Array.isArray(allPriceData) && allPriceData.length > 0) {
-                                const latestPrice = allPriceData[0].price;
+                                // 确保数据已排序，取第一个（最新的）
+                                const sortedData = allPriceData.sort((a, b) => {
+                                    if (!a || !a.date) return 1;
+                                    if (!b || !b.date) return -1;
+                                    return new Date(b.date) - new Date(a.date);
+                                });
+                                const latestPrice = sortedData[0];
                                 console.log('Latest price from CoffeePriceData:', latestPrice);
+                                console.log('Latest price date:', latestPrice.date);
                                   
                                 // 直接更新价格，避免不必要的透明度变化
-                                currentPriceElement.textContent = `¥${latestPrice} / ตัน (吨)`;
+                                currentPriceElement.textContent = `¥${latestPrice.price} / ตัน (吨)`;
                             } else {
                                 console.warn('No price data available, using default');
                                 // 如果没有数据，使用默认价格
