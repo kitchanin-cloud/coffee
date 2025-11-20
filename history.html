@@ -545,53 +545,59 @@
             ];
 
             // 获取价格数据 - 使用3.0数据管理系统
-            function getPriceData() {
-                try {
-                    console.log('从3.0数据管理系统获取价格数据...');
-                    
-                    // 优先使用统一的数据管理系统
-                    if (window.CoffeePriceData && typeof window.CoffeePriceData.getData === 'function') {
-                        const allPriceData = window.CoffeePriceData.getData();
-                        console.log('从CoffeePriceData获取到数据，记录数:', allPriceData.length);
+    function getPriceData() {
+        try {
+            console.log('从3.0数据管理系统获取价格数据...');
+            
+            // 优先使用统一的数据管理系统
+            if (window.CoffeePriceData && typeof window.CoffeePriceData.getData === 'function') {
+                const allPriceData = window.CoffeePriceData.getData();
+                console.log('从CoffeePriceData获取到数据，记录数:', allPriceData.length);
 
-                        if (Array.isArray(allPriceData) && allPriceData.length > 0) {
-                            return allPriceData.sort((a, b) => new Date(b.date) - new Date(a.date));
-                        }
-                    }
-
-                    // 尝试使用PriceSyncAPI的getStatus方法获取同步状态
-                    if (window.PriceSyncAPI && typeof window.PriceSyncAPI.getStatus === 'function') {
-                        const syncStatus = window.PriceSyncAPI.getStatus();
-                        console.log('从PriceSyncAPI获取到同步状态:', syncStatus);
-                    }
-                    
-                    // 从localStorage获取数据作为后备
-                    let storedData = null;
-                    try {
-                        const storedDataStr = localStorage.getItem('coffee_prices_v3');
-                        if (storedDataStr) {
-                            const parsedData = JSON.parse(storedDataStr);
-                            storedData = Array.isArray(parsedData.data) ? parsedData.data : [];
-                            console.log('从localStorage获取到数据，记录数:', storedData.length);
-                        }
-                    } catch (localStorageError) {
-                        console.warn('从localStorage读取数据失败:', localStorageError);
-                    }
-
-                    // 如果localStorage中有有效数据，使用它
-                    if (Array.isArray(storedData) && storedData.length > 0) {
-                        return storedData.sort((a, b) => new Date(b.date) - new Date(a.date));
-                    }
-
-                    // 最后回退到使用基础数据
-                    console.log('没有找到更新的数据，使用基础数据');
-                    return [...basePriceData].sort((a, b) => new Date(b.date) - new Date(a.date));
-                } catch (error) {
-                    console.error('获取价格数据时出错:', error);
-                    // 出错时回退到使用基础数据
-                    return [...basePriceData].sort((a, b) => new Date(b.date) - new Date(a.date));
+                if (Array.isArray(allPriceData) && allPriceData.length > 0) {
+                    return allPriceData.sort((a, b) => new Date(b.date) - new Date(a.date));
                 }
             }
+
+            // 尝试使用PriceSyncAPI的getStatus方法获取同步状态
+            if (window.PriceSyncAPI && typeof window.PriceSyncAPI.getStatus === 'function') {
+                const syncStatus = window.PriceSyncAPI.getStatus();
+                console.log('从PriceSyncAPI获取到同步状态:', syncStatus);
+            }
+            
+            // 从localStorage获取数据作为后备
+            let storedData = null;
+            try {
+                const storedDataStr = localStorage.getItem('coffee_prices_v3');
+                if (storedDataStr) {
+                    const parsedData = JSON.parse(storedDataStr);
+                    storedData = Array.isArray(parsedData.data) ? parsedData.data : [];
+                    console.log('从localStorage获取到数据，记录数:', storedData.length);
+                }
+            } catch (localStorageError) {
+                console.warn('从localStorage读取数据失败:', localStorageError);
+            }
+
+            // 如果localStorage中有有效数据，使用它
+            if (Array.isArray(storedData) && storedData.length > 0) {
+                return storedData.sort((a, b) => new Date(b.date) - new Date(a.date));
+            }
+
+            // 最后回退到使用基础数据
+            console.log('没有找到更新的数据，使用基础数据');
+            return [...basePriceData].sort((a, b) => new Date(b.date) - new Date(a.date));
+        } catch (error) {
+            console.error('获取价格数据时出错:', error);
+            // 出错时回退到使用基础数据
+            return [...basePriceData].sort((a, b) => new Date(b.date) - new Date(a.date));
+        }
+    }
+    
+    // 添加时间戳参数避免缓存
+    function addCacheBuster(url) {
+        const separator = url.includes('?') ? '&' : '?';
+        return url + separator + '_t=' + Date.now();
+    }
 
             // 动态计算总页数
             function calculateTotalPages(data) {

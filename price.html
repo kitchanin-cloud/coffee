@@ -358,6 +358,12 @@
             console.log('=== price.html 初始化完成 ===');
         }
         
+        // 添加时间戳参数避免缓存
+        function addCacheBuster(url) {
+            const separator = url.includes('?') ? '&' : '?';
+            return url + separator + '_t=' + Date.now();
+        }
+        
         // 页面加载完成后初始化
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', () => {

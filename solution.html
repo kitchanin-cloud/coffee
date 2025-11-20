@@ -470,57 +470,63 @@
     </footer>
 
     <script>
-        // 初始化系统
-        document.addEventListener('DOMContentLoaded', function() {
-            // 初始化 CoffeePriceData 系统
-            if (window.CoffeePriceData) {
-                try {
-                    window.CoffeePriceData.initialize();
-                    console.log("CoffeePriceData 系统初始化成功");
-                } catch (error) {
-                    console.error("CoffeePriceData 系统初始化失败:", error);
-                }
+        // 添加时间戳参数避免缓存
+    function addCacheBuster(url) {
+        const separator = url.includes('?') ? '&' : '?';
+        return url + separator + '_t=' + Date.now();
+    }
+    
+    // 初始化系统
+    document.addEventListener('DOMContentLoaded', function() {
+        // 初始化 CoffeePriceData 系统
+        if (window.CoffeePriceData) {
+            try {
+                window.CoffeePriceData.initialize();
+                console.log("CoffeePriceData 系统初始化成功");
+            } catch (error) {
+                console.error("CoffeePriceData 系统初始化失败:", error);
             }
-            
-            // 设置默认日期为今天（使用本地时间而不是UTC时间）
+        }
+        
+        // 设置默认日期为今天（使用本地时间而不是UTC时间）
         const now = new Date();
         const today = now.getFullYear() + '-' + 
                      String(now.getMonth() + 1).padStart(2, '0') + '-' + 
                      String(now.getDate()).padStart(2, '0');
         document.getElementById('price-date').value = today;
         document.getElementById('price-time').value = new Date().toTimeString().substring(0, 5);
-            
-            // 绑定标签页切换事件
-            document.querySelectorAll('.tab').forEach(tab => {
-                tab.addEventListener('click', () => {
-                    // 移除所有活动状态
-                    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-                    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-                    
-                    // 激活当前标签页
-                    tab.classList.add('active');
-                    const tabId = tab.getAttribute('data-tab');
-                    document.getElementById(tabId).classList.add('active');
-                    
-                    // 根据标签页加载相应数据
-                    if (tabId === 'dashboard') {
-                        loadDashboardData();
-                    } else if (tabId === 'history') {
-                        loadHistoryData();
-                    }
-                });
+        
+        // 绑定标签页切换事件
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                // 移除所有活动状态
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                
+                // 激活当前标签页
+                tab.classList.add('active');
+                const tabId = tab.getAttribute('data-tab');
+                document.getElementById(tabId).classList.add('active');
+                
+                // 根据标签页加载相应数据
+                if (tabId === 'dashboard') {
+                    loadDashboardData();
+                } else if (tabId === 'history') {
+                    loadHistoryData();
+                }
             });
-            
-            // 绑定表单提交事件
-            document.getElementById('price-form').addEventListener('submit', handlePriceSubmit);
-            
-            // 绑定数据管理按钮事件
-            document.getElementById('clear-data').addEventListener('click', clearAllData);
-            document.getElementById('export-data').addEventListener('click', exportData);
-            
-            // 初始加载仪表板数据
-            loadDashboardData();
         });
+        
+        // 绑定表单提交事件
+        document.getElementById('price-form').addEventListener('submit', handlePriceSubmit);
+        
+        // 绑定数据管理按钮事件
+        document.getElementById('clear-data').addEventListener('click', clearAllData);
+        document.getElementById('export-data').addEventListener('click', exportData);
+        
+        // 初始加载仪表板数据
+        loadDashboardData();
+    });
         
         // 加载仪表板数据
         function loadDashboardData() {
