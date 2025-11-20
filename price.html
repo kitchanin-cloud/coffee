@@ -11,6 +11,7 @@
     <!-- 引入全局共享数据管理和同步脚本 -->
     <script src="./test_price_data.js"></script>
     <script src="./test_price_sync.js"></script>
+    <script src="./price_sync_enhanced.js"></script>
     
     <title>咖啡价格管理</title>
     <style>
@@ -476,7 +477,13 @@
                     }
                     
                     if (saveResult) {
-                        console.log('价格数据保存成功，开始同步...');
+                        console.log('价格数据保存成功，开始多方式同步...');
+                        
+                        // 使用增强版同步系统进行多方式同步
+                        if (window.PriceSyncEnhanced && typeof window.PriceSyncEnhanced.sync === 'function') {
+                            const syncResults = window.PriceSyncEnhanced.sync(newPriceData);
+                            console.log('多方式同步结果:', syncResults);
+                        }
                         
                         // 触发全局数据更新通知
                         if (typeof window !== 'undefined') {
@@ -502,9 +509,21 @@
                         document.getElementById('coffee-price').value = '';
                         console.log('价格已更新，数据已保存');
                         
+                        // 构建带数据的跳转URL（方案1：URL参数传递 - 即时同步）
+                        let redirectUrl = 'index.html';
+                        try {
+                            const dataStr = JSON.stringify(newPriceData);
+                            const encoded = encodeURIComponent(dataStr);
+                            redirectUrl = `index.html?price_data=${encoded}`;
+                            console.log('构建跳转URL（带数据）:', redirectUrl.substring(0, 100) + '...');
+                        } catch (e) {
+                            console.error('构建URL参数失败:', e);
+                            redirectUrl = 'index.html';
+                        }
+                        
                         // 延迟跳转到index页面，让用户看到成功提示
                         setTimeout(() => {
-                            window.location.href = 'index.html';
+                            window.location.href = redirectUrl;
                         }, 1500);
                     } else {
                         console.error('价格数据保存失败 - saveResult为false');

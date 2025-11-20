@@ -11,6 +11,7 @@
     <!-- 引入全局共享数据管理和同步脚本 -->
     <script src="./test_price_data.js"></script>
     <script src="./test_price_sync.js"></script>
+    <script src="./price_sync_enhanced.js"></script>
     
     <!-- 数据同步优化脚本 - 与统一数据系统集成 -->
     <script>
@@ -488,6 +489,34 @@
 
             // 检测是否为移动设备
             const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+            
+            // 设置增强版同步监听器（第一时间接收更新）
+            if (window.PriceSyncEnhanced && typeof window.PriceSyncEnhanced.setupListeners === 'function') {
+                console.log('设置增强版同步监听器...');
+                window.PriceSyncEnhanced.setupListeners(function(updatedData) {
+                    console.log('收到实时数据更新:', updatedData);
+                    // 如果收到新数据，立即保存并刷新显示
+                    if (updatedData && updatedData.date && updatedData.price) {
+                        if (window.CoffeePriceData && window.CoffeePriceData.savePriceData) {
+                            window.CoffeePriceData.savePriceData(updatedData);
+                        }
+                        renderPage(currentPage);
+                    }
+                });
+            }
+            
+            // 检查URL参数中是否有新数据
+            if (window.PriceSyncEnhanced && typeof window.PriceSyncEnhanced.readFromURL === 'function') {
+                const urlData = window.PriceSyncEnhanced.readFromURL();
+                if (urlData && urlData.date && urlData.price) {
+                    console.log('从URL读取到新数据，立即保存:', urlData);
+                    if (window.CoffeePriceData && window.CoffeePriceData.savePriceData) {
+                        window.CoffeePriceData.savePriceData(urlData);
+                    }
+                    // 清除URL参数，避免重复处理
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                }
+            }
 
             // 监听价格数据更新（跨设备同步）
             function handlePriceUpdate(event) {
