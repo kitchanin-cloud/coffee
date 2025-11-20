@@ -155,6 +155,26 @@ function generateSyncId() {
  */
 function saveDataToStorage() {
   try {
+    console.log('=== 开始保存到localStorage ===');
+    console.log('存储键:', DATA_CONFIG.STORAGE_KEY);
+    console.log('priceDataStore状态:', {
+      version: priceDataStore.version,
+      dataCount: priceDataStore.data ? priceDataStore.data.length : 0,
+      lastUpdated: priceDataStore.lastUpdated
+    });
+    
+    // 检查localStorage是否可用
+    if (typeof localStorage === 'undefined') {
+      console.error('localStorage不可用！');
+      return false;
+    }
+    
+    // 确保数据有效
+    if (!priceDataStore || !priceDataStore.data) {
+      console.error('priceDataStore或data无效！');
+      return false;
+    }
+    
     const dataToSave = {
       version: priceDataStore.version,
       data: priceDataStore.data,
@@ -162,16 +182,62 @@ function saveDataToStorage() {
       syncId: priceDataStore.syncId
     };
     
-    localStorage.setItem(DATA_CONFIG.STORAGE_KEY, JSON.stringify(dataToSave));
+    console.log('准备保存的数据结构:', {
+      version: dataToSave.version,
+      dataCount: dataToSave.data.length,
+      lastUpdated: dataToSave.lastUpdated
+    });
+    
+    // 尝试序列化数据
+    let jsonString;
+    try {
+      jsonString = JSON.stringify(dataToSave);
+      console.log('数据序列化成功，大小:', jsonString.length, '字符');
+    } catch (stringifyError) {
+      console.error('数据序列化失败:', stringifyError);
+      return false;
+    }
+    
+    // 尝试保存到localStorage
+    try {
+      localStorage.setItem(DATA_CONFIG.STORAGE_KEY, jsonString);
+      console.log('数据已写入localStorage');
+      
+      // 验证保存是否成功
+      const verifyData = localStorage.getItem(DATA_CONFIG.STORAGE_KEY);
+      if (verifyData === jsonString) {
+        console.log('数据保存验证成功');
+      } else {
+        console.warn('数据保存验证失败，但可能仍然成功');
+      }
+    } catch (storageError) {
+      console.error('写入localStorage失败:', storageError);
+      console.error('错误类型:', storageError.name);
+      console.error('错误消息:', storageError.message);
+      
+      // 检查是否是存储空间不足
+      if (storageError.name === 'QuotaExceededError') {
+        console.error('localStorage存储空间不足！');
+      }
+      return false;
+    }
     
     // 更新全局时间戳
     const now = Date.now();
-    localStorage.setItem('global_last_updated', String(now));
+    try {
+      localStorage.setItem('global_last_updated', String(now));
+      localStorage.setItem('sync_id', priceDataStore.syncId || '');
+      console.log('全局时间戳已更新');
+    } catch (timestampError) {
+      console.warn('更新全局时间戳失败，但数据已保存:', timestampError);
+    }
     
-    console.log('数据已保存到localStorage');
+    console.log('=== localStorage保存完成 ===');
     return true;
   } catch (error) {
-    console.error('保存数据到localStorage时出错:', error);
+    console.error('=== 保存数据到localStorage时出错 ===');
+    console.error('错误详情:', error);
+    console.error('错误堆栈:', error.stack);
     return false;
   }
 }
@@ -243,16 +309,52 @@ window.CoffeePriceData.getPriceByDate = function(date) {
  */
 window.CoffeePriceData.savePriceData = function(newPriceData) {
   try {
-    console.log('尝试保存新的价格数据:', newPriceData);
+    console.log('=== 开始保存价格数据 ===');
+    console.log('输入数据:', newPriceData);
+    
+    // 确保数据系统已初始化
+    if (!priceDataStore || !priceDataStore.data) {
+      console.warn('priceDataStore未初始化，尝试初始化...');
+      // 尝试加载数据
+      loadData();
+      // 如果仍然没有数据，初始化空数组
+      if (!priceDataStore || !priceDataStore.data) {
+        console.warn('初始化priceDataStore...');
+        priceDataStore = {
+          version: DATA_CONFIG.DATA_VERSION,
+          data: [],
+          lastUpdated: Date.now(),
+          syncId: generateSyncId()
+        };
+      }
+    }
+    
+    console.log('当前priceDataStore状态:', {
+      version: priceDataStore.version,
+      dataCount: priceDataStore.data ? priceDataStore.data.length : 0,
+      lastUpdated: priceDataStore.lastUpdated
+    });
     
     // 验证数据
+    console.log('验证数据格式...');
     if (!validatePriceData(newPriceData)) {
-      console.error('数据验证失败');
+      console.error('数据验证失败！');
+      console.error('数据对象:', newPriceData);
+      console.error('日期格式:', newPriceData.date, '匹配:', DATA_CONFIG.VALIDATION_RULES.date.test(newPriceData.date || ''));
+      console.error('价格格式:', newPriceData.price, '匹配:', DATA_CONFIG.VALIDATION_RULES.price.test(String(newPriceData.price || '')));
       return false;
     }
+    console.log('数据验证通过');
     
     // 标准化数据
     const normalizedData = normalizePriceData(newPriceData);
+    console.log('标准化后的数据:', normalizedData);
+    
+    // 确保data数组存在
+    if (!Array.isArray(priceDataStore.data)) {
+      console.warn('priceDataStore.data不是数组，初始化为空数组');
+      priceDataStore.data = [];
+    }
     
     // 检查是否已存在当天数据
     const existingIndex = priceDataStore.data.findIndex(item => 
@@ -261,16 +363,19 @@ window.CoffeePriceData.savePriceData = function(newPriceData) {
     
     if (existingIndex >= 0) {
       // 更新现有数据
-      console.log(`更新${normalizedData.date}的数据`);
+      console.log(`更新${normalizedData.date}的数据，索引: ${existingIndex}`);
       priceDataStore.data[existingIndex] = normalizedData;
     } else {
       // 添加新数据
       console.log(`添加新数据: ${normalizedData.date}`);
       priceDataStore.data.push(normalizedData);
+      console.log(`数据已添加，当前数据总数: ${priceDataStore.data.length}`);
     }
     
     // 按日期排序
+    console.log('按日期排序数据...');
     sortDataByDate();
+    console.log('排序后的第一条数据:', priceDataStore.data[0]);
     
     // 限制历史记录数量
     limitHistoryData();
@@ -280,20 +385,27 @@ window.CoffeePriceData.savePriceData = function(newPriceData) {
     priceDataStore.lastUpdated = now;
     priceDataStore.syncId = generateSyncId();
     
+    console.log('准备保存到localStorage...');
     // 保存到存储
     const saved = saveDataToStorage();
     
     if (saved) {
-      console.log('价格数据保存成功');
+      console.log('=== 价格数据保存成功 ===');
+      console.log('保存的数据总数:', priceDataStore.data.length);
+      console.log('最新数据:', priceDataStore.data[0]);
+      
       // 触发数据保存成功事件
       triggerDataSaved(normalizedData);
       return true;
     } else {
-      console.error('价格数据保存失败');
+      console.error('=== 价格数据保存失败 ===');
+      console.error('saveDataToStorage返回false');
       return false;
     }
   } catch (error) {
-    console.error('保存价格数据时出错:', error);
+    console.error('=== 保存价格数据时出错 ===');
+    console.error('错误详情:', error);
+    console.error('错误堆栈:', error.stack);
     return false;
   }
 }
