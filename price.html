@@ -531,7 +531,25 @@
                         console.error('1. 数据格式是否正确');
                         console.error('2. 数据系统是否已初始化');
                         console.error('3. localStorage是否可用');
-                        showNotification('保存失败，请重试。请查看控制台了解详情。', false);
+                        
+                        // 即使保存失败，也通过URL参数传递数据（强制方案）
+                        console.log('保存失败，但将通过URL参数强制传递数据...');
+                        try {
+                            const dataStr = JSON.stringify(newPriceData);
+                            const encoded = encodeURIComponent(dataStr);
+                            const redirectUrl = `index.html?price_data=${encoded}`;
+                            console.log('构建强制跳转URL（带数据）');
+                            
+                            showNotification('数据可能未保存到本地，但将通过URL传递', false);
+                            
+                            setTimeout(() => {
+                                console.log('执行强制跳转...');
+                                window.location.href = redirectUrl;
+                            }, 2000);
+                        } catch (e) {
+                            console.error('构建强制URL也失败:', e);
+                            showNotification('保存失败，请刷新页面后重试', false);
+                        }
                     }
                 } catch (error) {
                     console.error('保存价格数据时出错:', error);

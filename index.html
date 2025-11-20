@@ -552,6 +552,48 @@
             // 检测是否为移动设备
             const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
             
+            // ===== 立即检查URL参数中的新数据（最高优先级） =====
+            console.log('检查URL参数中的新数据...');
+            const urlParams = new URLSearchParams(window.location.search);
+            const priceDataStr = urlParams.get('price_data');
+            if (priceDataStr) {
+                try {
+                    const decoded = decodeURIComponent(priceDataStr);
+                    const urlData = JSON.parse(decoded);
+                    console.log('从URL读取到新数据:', urlData);
+                    if (urlData && urlData.date && urlData.price) {
+                        // 立即保存数据
+                        if (window.CoffeePriceData && window.CoffeePriceData.savePriceData) {
+                            console.log('立即保存URL中的数据...');
+                            const saved = window.CoffeePriceData.savePriceData(urlData);
+                            console.log('URL数据保存结果:', saved);
+                            if (saved) {
+                                // 清除URL参数，避免重复处理
+                                window.history.replaceState({}, document.title, window.location.pathname);
+                                console.log('URL参数已清除');
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.error('解析URL数据失败:', e);
+                }
+            }
+            
+            // 设置增强版同步监听器（实时接收更新）
+            if (window.PriceSyncEnhanced && typeof window.PriceSyncEnhanced.setupListeners === 'function') {
+                console.log('设置增强版同步监听器...');
+                window.PriceSyncEnhanced.setupListeners(function(updatedData) {
+                    console.log('收到实时数据更新:', updatedData);
+                    // 如果收到新数据，立即保存并刷新显示
+                    if (updatedData && updatedData.date && updatedData.price) {
+                        if (window.CoffeePriceData && window.CoffeePriceData.savePriceData) {
+                            window.CoffeePriceData.savePriceData(updatedData);
+                        }
+                        refreshPriceData();
+                    }
+                });
+            }
+            
             // 刷新价格数据的函数 - 使用CoffeePriceData系统
             function refreshPriceData() {
                 try {
@@ -739,6 +781,32 @@
             const refreshInterval = isMobile ? 15000 : 5000;
             const intervalId = setInterval(refreshPriceData, refreshInterval);
             cleanupFunctions.push(() => clearInterval(intervalId));
+            
+            // 页面加载后立即再次检查URL参数（确保不遗漏）
+            setTimeout(() => {
+                const urlParams = new URLSearchParams(window.location.search);
+                const priceDataStr = urlParams.get('price_data');
+                if (priceDataStr) {
+                    console.log('延迟检查：发现URL参数中有数据');
+                    try {
+                        const decoded = decodeURIComponent(priceDataStr);
+                        const urlData = JSON.parse(decoded);
+                        if (urlData && urlData.date && urlData.price) {
+                            if (window.CoffeePriceData && window.CoffeePriceData.savePriceData) {
+                                const saved = window.CoffeePriceData.savePriceData(urlData);
+                                if (saved) {
+                                    console.log('延迟保存URL数据成功');
+                                    refreshPriceData();
+                                    // 清除URL参数
+                                    window.history.replaceState({}, document.title, window.location.pathname);
+                                }
+                            }
+                        }
+                    } catch (e) {
+                        console.error('延迟处理URL数据失败:', e);
+                    }
+                }
+            }, 500);
             
             // 页面卸载时清理资源
             window.addEventListener('beforeunload', () => {

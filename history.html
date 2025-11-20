@@ -725,6 +725,33 @@
             // 初始化增强版同步
             setupEnhancedSync();
 
+            // ===== 立即检查URL参数中的新数据 =====
+            console.log('检查URL参数中的新数据...');
+            const urlParams = new URLSearchParams(window.location.search);
+            const priceDataStr = urlParams.get('price_data');
+            if (priceDataStr) {
+                try {
+                    const decoded = decodeURIComponent(priceDataStr);
+                    const urlData = JSON.parse(decoded);
+                    console.log('从URL读取到新数据:', urlData);
+                    if (urlData && urlData.date && urlData.price) {
+                        // 立即保存数据
+                        if (window.CoffeePriceData && window.CoffeePriceData.savePriceData) {
+                            console.log('立即保存URL中的数据...');
+                            const saved = window.CoffeePriceData.savePriceData(urlData);
+                            console.log('URL数据保存结果:', saved);
+                            if (saved) {
+                                // 清除URL参数，避免重复处理
+                                window.history.replaceState({}, document.title, window.location.pathname);
+                                console.log('URL参数已清除');
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.error('解析URL数据失败:', e);
+                }
+            }
+            
             // 初始化第一页
             renderPage(1);
 
