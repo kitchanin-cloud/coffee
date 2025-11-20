@@ -482,10 +482,13 @@
                 }
             }
             
-            // 设置默认日期为今天
-            const today = new Date().toISOString().split('T')[0];
-            document.getElementById('price-date').value = today;
-            document.getElementById('price-time').value = new Date().toTimeString().substring(0, 5);
+            // 设置默认日期为今天（使用本地时间而不是UTC时间）
+        const now = new Date();
+        const today = now.getFullYear() + '-' + 
+                     String(now.getMonth() + 1).padStart(2, '0') + '-' + 
+                     String(now.getDate()).padStart(2, '0');
+        document.getElementById('price-date').value = today;
+        document.getElementById('price-time').value = new Date().toTimeString().substring(0, 5);
             
             // 绑定标签页切换事件
             document.querySelectorAll('.tab').forEach(tab => {
@@ -719,7 +722,12 @@
                 const url = URL.createObjectURL(blob);
                 const link = document.createElement('a');
                 link.setAttribute('href', url);
-                link.setAttribute('download', 'coffee_prices_' + new Date().toISOString().split('T')[0] + '.csv');
+                // 使用本地时间而不是UTC时间
+    const now = new Date();
+    const today = now.getFullYear() + '-' + 
+                 String(now.getMonth() + 1).padStart(2, '0') + '-' + 
+                 String(now.getDate()).padStart(2, '0');
+    link.setAttribute('download', 'coffee_prices_' + today + '.csv');
                 link.style.visibility = 'hidden';
                 document.body.appendChild(link);
                 link.click();
