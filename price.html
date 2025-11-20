@@ -297,61 +297,76 @@
         <!-- 引入跨设备价格同步工具 -->
         <script src="./test_price_sync.js"></script>
         
-        <script type="module">
+        <script>
         // 从数据文件导入价格数据和函数
         // 注意：主要使用test_price_data.js，但保留data.js作为兼容
         // 由于test_price_data.js使用全局API，这里主要依赖全局对象
         // 将savePriceData函数暴露给全局作用域，以便跨设备同步工具可以访问
         
-        document.addEventListener('DOMContentLoaded', () => {
-            // 等待一小段时间确保所有脚本都已加载
-            setTimeout(() => {
-                console.log('=== price.html 初始化数据系统 ===');
-                
-                // 确保数据系统已初始化
-                if (window.CoffeePriceData && typeof window.CoffeePriceData.initPriceSystem === 'function') {
-                    console.log('初始化CoffeePriceData系统...');
-                    try {
-                        const initResult = window.CoffeePriceData.initPriceSystem();
-                        console.log('CoffeePriceData初始化结果:', initResult);
-                        
-                        // 验证数据系统是否正常工作
-                        if (window.CoffeePriceData.getLatestPriceData) {
-                            const testData = window.CoffeePriceData.getLatestPriceData();
-                            console.log('数据系统测试 - 当前数据记录数:', testData ? testData.length : 0);
-                        }
-                    } catch (initError) {
-                        console.error('初始化CoffeePriceData时出错:', initError);
+        // 确保脚本加载完成后再初始化
+        function initializePriceSystem() {
+            console.log('=== price.html 初始化数据系统 ===');
+            
+            // 检查脚本是否已加载
+            if (!window.CoffeePriceData) {
+                console.error('CoffeePriceData脚本未加载！');
+                // 如果脚本未加载，等待一下再试
+                setTimeout(initializePriceSystem, 100);
+                return;
+            }
+            
+            // 确保数据系统已初始化
+            if (typeof window.CoffeePriceData.initPriceSystem === 'function') {
+                console.log('初始化CoffeePriceData系统...');
+                try {
+                    const initResult = window.CoffeePriceData.initPriceSystem();
+                    console.log('CoffeePriceData初始化结果:', initResult);
+                    
+                    // 验证数据系统是否正常工作
+                    if (window.CoffeePriceData.getLatestPriceData) {
+                        const testData = window.CoffeePriceData.getLatestPriceData();
+                        console.log('数据系统测试 - 当前数据记录数:', testData ? testData.length : 0);
                     }
-                } else {
-                    console.error('CoffeePriceData系统不可用！');
-                    console.error('window.CoffeePriceData存在:', !!window.CoffeePriceData);
-                    console.error('initPriceSystem函数存在:', !!(window.CoffeePriceData && window.CoffeePriceData.initPriceSystem));
+                } catch (initError) {
+                    console.error('初始化CoffeePriceData时出错:', initError);
                 }
-                
-                // 确保同步系统已初始化
-                if (window.PriceSyncAPI && typeof window.PriceSyncAPI.init === 'function') {
-                    console.log('初始化PriceSyncAPI系统...');
-                    try {
-                        window.PriceSyncAPI.init();
-                        console.log('PriceSyncAPI初始化完成');
-                    } catch (syncError) {
-                        console.warn('初始化PriceSyncAPI时出错:', syncError);
-                    }
-                } else {
-                    console.warn('PriceSyncAPI系统不可用，将使用直接保存方式');
+            } else {
+                console.error('CoffeePriceData.initPriceSystem函数不可用！');
+            }
+            
+            // 确保同步系统已初始化
+            if (window.PriceSyncAPI && typeof window.PriceSyncAPI.init === 'function') {
+                console.log('初始化PriceSyncAPI系统...');
+                try {
+                    window.PriceSyncAPI.init();
+                    console.log('PriceSyncAPI初始化完成');
+                } catch (syncError) {
+                    console.warn('初始化PriceSyncAPI时出错:', syncError);
                 }
-                
-                // 将savePriceData函数暴露给全局作用域
-                if (window.CoffeePriceData && window.CoffeePriceData.savePriceData) {
-                    window.savePriceData = window.CoffeePriceData.savePriceData;
-                    console.log('savePriceData函数已暴露到全局作用域');
-                } else {
-                    console.error('savePriceData函数不可用！');
-                }
-                
-                console.log('=== price.html 初始化完成 ===');
-            }, 300);
+            } else {
+                console.warn('PriceSyncAPI系统不可用，将使用直接保存方式');
+            }
+            
+            // 将savePriceData函数暴露给全局作用域
+            if (window.CoffeePriceData && window.CoffeePriceData.savePriceData) {
+                window.savePriceData = window.CoffeePriceData.savePriceData;
+                console.log('savePriceData函数已暴露到全局作用域');
+            } else {
+                console.error('savePriceData函数不可用！');
+            }
+            
+            console.log('=== price.html 初始化完成 ===');
+        }
+        
+        // 页面加载完成后初始化
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => {
+                setTimeout(initializePriceSystem, 100);
+            });
+        } else {
+            // DOM已加载，立即初始化
+            setTimeout(initializePriceSystem, 100);
+        }
             const priceForm = document.getElementById('price-form');
             const notification = document.getElementById('notification');
             const currentDate = new Date().toISOString().split('T')[0]; // 获取当前日期，格式为YYYY-MM-DD
@@ -406,14 +421,29 @@
                         if (window.CoffeePriceData.initPriceSystem && typeof window.CoffeePriceData.initPriceSystem === 'function') {
                             console.log('保存前再次确保数据系统已初始化...');
                             try {
-                                window.CoffeePriceData.initPriceSystem();
+                                const initResult = window.CoffeePriceData.initPriceSystem();
+                                console.log('保存前初始化结果:', initResult);
                             } catch (initError) {
                                 console.error('保存前初始化失败:', initError);
                             }
                         }
                         
-                        saveResult = window.CoffeePriceData.savePriceData(newPriceData);
-                        console.log('保存结果:', saveResult);
+                        // 检查localStorage是否可用
+                        if (typeof localStorage === 'undefined') {
+                            console.error('localStorage不可用！');
+                            showNotification('浏览器不支持数据存储，请使用其他浏览器', false);
+                            return;
+                        }
+                        
+                        // 尝试保存
+                        try {
+                            saveResult = window.CoffeePriceData.savePriceData(newPriceData);
+                            console.log('保存结果:', saveResult);
+                        } catch (saveError) {
+                            console.error('保存时抛出异常:', saveError);
+                            console.error('异常详情:', saveError.message, saveError.stack);
+                            saveResult = false;
+                        }
                         
                         // 如果保存失败，尝试从localStorage读取验证
                         if (!saveResult) {
