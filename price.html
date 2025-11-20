@@ -302,12 +302,35 @@
         // 注意：主要使用test_price_data.js，但保留data.js作为兼容
         // 由于test_price_data.js使用全局API，这里主要依赖全局对象
         // 将savePriceData函数暴露给全局作用域，以便跨设备同步工具可以访问
-        if (window.CoffeePriceData && window.CoffeePriceData.savePriceData) {
-            window.savePriceData = window.CoffeePriceData.savePriceData;
-        }
         
-
         document.addEventListener('DOMContentLoaded', () => {
+            // 等待一小段时间确保所有脚本都已加载
+            setTimeout(() => {
+                // 确保数据系统已初始化
+                if (window.CoffeePriceData && typeof window.CoffeePriceData.initPriceSystem === 'function') {
+                    console.log('初始化CoffeePriceData系统...');
+                    const initResult = window.CoffeePriceData.initPriceSystem();
+                    console.log('CoffeePriceData初始化结果:', initResult);
+                } else {
+                    console.error('CoffeePriceData系统不可用！');
+                }
+                
+                // 确保同步系统已初始化
+                if (window.PriceSyncAPI && typeof window.PriceSyncAPI.init === 'function') {
+                    console.log('初始化PriceSyncAPI系统...');
+                    window.PriceSyncAPI.init();
+                } else {
+                    console.warn('PriceSyncAPI系统不可用，将使用直接保存方式');
+                }
+                
+                // 将savePriceData函数暴露给全局作用域
+                if (window.CoffeePriceData && window.CoffeePriceData.savePriceData) {
+                    window.savePriceData = window.CoffeePriceData.savePriceData;
+                    console.log('savePriceData函数已暴露到全局作用域');
+                } else {
+                    console.error('savePriceData函数不可用！');
+                }
+            }, 200);
             const priceForm = document.getElementById('price-form');
             const notification = document.getElementById('notification');
             const currentDate = new Date().toISOString().split('T')[0]; // 获取当前日期，格式为YYYY-MM-DD
@@ -341,79 +364,75 @@
             }
 
             console.log('提交的价格数据:', newPriceData);
+            console.log('日期格式验证:', /^\d{4}-\d{2}-\d{2}$/.test(newPriceData.date));
+            console.log('价格格式验证:', /^\d+(\.\d{1,2})?$/.test(newPriceData.price));
 
             // 使用统一数据系统保存数据
             const saveData = async () => {
                 try {
+                    console.log('开始保存价格数据...');
+                    console.log('PriceSyncAPI available:', !!window.PriceSyncAPI);
+                    console.log('CoffeePriceData available:', !!window.CoffeePriceData);
+                    console.log('CoffeePriceData.savePriceData available:', !!(window.CoffeePriceData && window.CoffeePriceData.savePriceData));
+                    
                     let saveResult = false;
                     
-                    // 优先使用PriceSyncAPI
-                    if (window.PriceSyncAPI && typeof window.PriceSyncAPI.saveAndSyncPriceData === 'function') {
+                    // 优先使用CoffeePriceData直接保存
+                    if (window.CoffeePriceData && typeof window.CoffeePriceData.savePriceData === 'function') {
+                        console.log('使用CoffeePriceData.savePriceData保存数据...');
+                        saveResult = window.CoffeePriceData.savePriceData(newPriceData);
+                        console.log('保存结果:', saveResult);
+                    } else if (window.PriceSyncAPI && typeof window.PriceSyncAPI.saveAndSyncPriceData === 'function') {
+                        console.log('使用PriceSyncAPI.saveAndSyncPriceData保存数据...');
                         saveResult = await window.PriceSyncAPI.saveAndSyncPriceData(newPriceData);
-                    } else if (typeof savePriceData === 'function') {
-                        // 兼容旧版保存函数
-                        saveResult = savePriceData(newPriceData);
+                        console.log('保存结果:', saveResult);
+                    } else if (typeof window.savePriceData === 'function') {
+                        console.log('使用window.savePriceData保存数据...');
+                        saveResult = window.savePriceData(newPriceData);
+                        console.log('保存结果:', saveResult);
                     } else {
+                        console.error('所有数据保存函数都不可用');
                         throw new Error('数据保存函数不可用');
                     }
                     
                     if (saveResult) {
                         console.log('价格数据保存成功，开始同步...');
                         
-                        // 构造用于同步的数据对象
-                        const syncPriceData = {
-                            price: priceValue,
-                            currency: 'CNY',
-                            unit: '吨'
-                        };
-                        
-                        // 调用同步函数，传入完整的价格数据对象
-                        if (window.PriceSyncAPI && typeof window.PriceSyncAPI.syncPriceData === 'function') {
-                            await window.PriceSyncAPI.syncPriceData(syncPriceData);
-                        } else if (window.saveAndSyncPriceData) {
-                            await window.saveAndSyncPriceData(syncPriceData);
+                        // 触发全局数据更新通知
+                        if (typeof window !== 'undefined') {
+                            window.dispatchEvent(new CustomEvent('global-data-updated', {
+                                detail: {
+                                    timestamp: Date.now(),
+                                    syncId: 'local_save_' + Date.now()
+                                }
+                            }));
+                            
+                            window.dispatchEvent(new CustomEvent('price-data-saved', {
+                                detail: {
+                                    data: newPriceData,
+                                    timestamp: Date.now()
+                                }
+                            }));
                         }
                         
-                        // 不管同步结果如何，都显示成功并跳转
+                        // 显示成功通知
                         showNotification('价格更新成功！\n正在跳转到首页...', true);
                         
                         // 清空表单输入框
                         document.getElementById('coffee-price').value = '';
                         console.log('价格已更新，数据已保存');
                         
-                        // 强制重新生成包含完整最新数据的同步URL - 使用增强版防缓存机制
-                        if (typeof window.getSyncUrl === 'function') {
-                            const syncUrl = window.getSyncUrl(); // 已经包含时间戳和版本号
-                            if (syncUrl) {
-                                // 确保URL包含force=true参数以强制PC端刷新
-                                const forceUrl = syncUrl.includes('force=true') 
-                                    ? syncUrl 
-                                    : (syncUrl.includes('?') 
-                                       ? `${syncUrl}&force=true` 
-                                       : `${syncUrl}?force=true`);
-                                
-                                window.history.replaceState({}, document.title, forceUrl);
-                                console.log('页面URL已更新为包含完整同步数据的防缓存URL');
-                            }
-                        }
-                        
-                        // 触发全局数据更新通知
-                        if (typeof window !== 'undefined') {
-                            window.dispatchEvent(new CustomEvent('global-data-updated', {
-                                detail: {
-                                    timestamp: Date.now(),
-                                    syncId: newPriceData.syncId || 'unknown'
-                                }
-                            }));
-                        }
-                        
                         // 延迟跳转到index页面，让用户看到成功提示
                         setTimeout(() => {
                             window.location.href = 'index.html';
                         }, 1500);
                     } else {
-                        showNotification('保存失败，请重试', false);
-                        console.error('价格数据保存失败');
+                        console.error('价格数据保存失败 - saveResult为false');
+                        console.error('请检查：');
+                        console.error('1. 数据格式是否正确');
+                        console.error('2. 数据系统是否已初始化');
+                        console.error('3. localStorage是否可用');
+                        showNotification('保存失败，请重试。请查看控制台了解详情。', false);
                     }
                 } catch (error) {
                     console.error('保存价格数据时出错:', error);
