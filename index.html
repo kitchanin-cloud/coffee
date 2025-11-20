@@ -126,10 +126,10 @@
         }
 
         .buttons button {
-            background-color: rgba(255, 223, 193, 0.2);
-            border: 1px solid rgba(255, 223, 193, 0.5);
+            background-color: rgba(255, 223, 193, 0.15);
+            border: 1px solid rgba(255, 223, 193, 0.4);
             color: #FFDDC1;
-            padding: 15px 30px;
+            padding: 12px 25px;
             border-radius: 50px;
             font-size: 1em;
             cursor: pointer;
@@ -150,9 +150,9 @@
         }
 
         .buttons button:hover {
-            background-color: rgba(255, 223, 193, 0.3);
-            transform: translateY(-3px);
-            box-shadow: 0 5px 15px rgba(255, 223, 193, 0.3);
+            background-color: rgba(255, 223, 193, 0.25);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(255, 223, 193, 0.25);
         }
 
         .buttons button:hover:before {
@@ -240,7 +240,7 @@
             }
             
             .buttons button {
-                padding: 15px 30px;
+                padding: 10px 20px;
                 font-size: 0.85em;
                 border-width: 1px;
             }
@@ -558,18 +558,29 @@
             // 检测是否为移动设备
             const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
             
-            // 刷新价格数据的函数 - 使用新的CoffeePriceSystem
+            // 刷新价格数据的函数 - 使用CoffeePriceData系统
             function refreshPriceData() {
                 try {
-                    console.log('Refreshing price data with CoffeePriceSystem...');
-                    
-                    // 优先使用CoffeePriceSystem获取数据
-                    if (window.CoffeePriceSystem && typeof window.CoffeePriceSystem.getLatestPrice === 'function') {
-                        const latestPrice = window.CoffeePriceSystem.getLatestPrice();
-                        console.log('Latest price from CoffeePriceSystem:', latestPrice);
-                           
-                        // 直接更新价格，避免不必要的透明度变化
-                        currentPriceElement.textContent = `¥${latestPrice} / ตัน (吨)`;
+                    console.log('Refreshing price data with CoffeePriceData...');
+                     
+                    // 初始化CoffeePriceData系统
+                    if (window.CoffeePriceData && typeof window.CoffeePriceData.initPriceSystem === 'function') {
+                        window.CoffeePriceData.initPriceSystem();
+                    }
+                     
+                    // 使用CoffeePriceData获取数据
+                    if (window.CoffeePriceData && typeof window.CoffeePriceData.getCurrentPrice === 'function') {
+                        const latestPrice = window.CoffeePriceData.getCurrentPrice();
+                        if (latestPrice) {
+                            console.log('Latest price from CoffeePriceData:', latestPrice);
+                               
+                            // 直接更新价格，避免不必要的透明度变化
+                            currentPriceElement.textContent = `¥${latestPrice.price} / ตัน (吨)`;
+                        } else {
+                            console.warn('No price data available, using default');
+                            // 如果没有数据，使用默认价格
+                            currentPriceElement.textContent = '¥58723 / ตัน (吨)';
+                        }
                     } else {
                         // 使用新的统一数据层
                         if (window.CoffeePriceData && typeof window.CoffeePriceData.getLatestPriceData === 'function') {
@@ -686,9 +697,14 @@
             const cleanup = setupPriceUpdateListeners();
             cleanupFunctions.push(cleanup);
             
+            // 初始化CoffeePriceData系统
+            if (window.CoffeePriceData && typeof window.CoffeePriceData.initPriceSystem === 'function') {
+                window.CoffeePriceData.initPriceSystem();
+            }
+             
             // 初始加载价格数据
             refreshPriceData();
-            
+             
             // 初始化增强版同步
             setupEnhancedSync();
             

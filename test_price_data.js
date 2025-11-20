@@ -2,6 +2,9 @@
 // 版本: 3.0
 // 核心特性: 权威数据源、完善的时间戳控制、健壮的冲突解决
 
+// 创建全局命名空间
+window.CoffeePriceData = window.CoffeePriceData || {};
+
 // 全局数据存储
 let priceDataStore = {
   version: '3.0',
@@ -31,7 +34,7 @@ const DATA_CONFIG = {
  * 初始化数据管理系统
  * @returns {boolean} 初始化是否成功
  */
-export function initPriceSystem() {
+window.CoffeePriceData.initPriceSystem = function() {
   try {
     console.log('初始化咖啡豆价格数据管理系统 v3.0');
     
@@ -177,7 +180,7 @@ function saveDataToStorage() {
  * 获取最新价格数据
  * @returns {Array} 价格数据数组的深拷贝
  */
-export function getLatestPriceData() {
+window.CoffeePriceData.getLatestPriceData = function() {
   try {
     // 检查数据是否过期，需要刷新
     const now = Date.now();
@@ -198,7 +201,7 @@ export function getLatestPriceData() {
  * 获取最新的价格记录
  * @returns {Object|null} 最新的价格数据对象，如果没有数据则返回null
  */
-export function getCurrentPrice() {
+window.CoffeePriceData.getCurrentPrice = function() {
   try {
     const latestData = getLatestPriceData();
     return latestData.length > 0 ? JSON.parse(JSON.stringify(latestData[0])) : null;
@@ -213,7 +216,7 @@ export function getCurrentPrice() {
  * @param {string} date - 日期字符串，格式为YYYY-MM-DD
  * @returns {Object|null} 价格数据对象，如果没有找到则返回null
  */
-export function getPriceByDate(date) {
+window.CoffeePriceData.getPriceByDate = function(date) {
   try {
     if (!date || !DATA_CONFIG.VALIDATION_RULES.date.test(date)) {
       console.error('无效的日期格式');
@@ -235,7 +238,7 @@ export function getPriceByDate(date) {
  * @param {Object} newPriceData - 新的价格数据对象
  * @returns {boolean} 是否保存成功
  */
-export function savePriceData(newPriceData) {
+window.CoffeePriceData.savePriceData = function(newPriceData) {
   try {
     console.log('尝试保存新的价格数据:', newPriceData);
     
@@ -366,7 +369,7 @@ function limitHistoryData() {
  * @param {Array} externalData - 外部价格数据数组
  * @returns {boolean} 是否同步成功
  */
-export function syncFromExternalData(externalData) {
+window.CoffeePriceData.syncFromExternalData = function(externalData) {
   try {
     console.log('尝试从外部源同步价格数据，记录数:', externalData?.length || 0);
     
@@ -440,7 +443,7 @@ export function syncFromExternalData(externalData) {
  * 强制刷新数据
  * @returns {Array} 刷新后的价格数据数组
  */
-export function refreshPriceData() {
+window.CoffeePriceData.refreshPriceData = function() {
   try {
     console.log('强制刷新价格数据');
     
@@ -462,7 +465,7 @@ export function refreshPriceData() {
  * @param {Object} priceData - 价格数据对象
  * @returns {Object} 格式化后的价格数据对象
  */
-export function formatPriceDataForDisplay(priceData) {
+window.CoffeePriceData.formatPriceDataForDisplay = function(priceData) {
   try {
     if (!priceData || typeof priceData !== 'object') {
       return null;
@@ -600,7 +603,7 @@ function triggerDataSynced() {
 /**
  * 清理数据管理系统资源
  */
-export function cleanupPriceSystem() {
+window.CoffeePriceData.cleanupPriceSystem = function() {
   try {
     console.log('清理价格数据管理系统资源');
     
@@ -620,7 +623,7 @@ export function cleanupPriceSystem() {
  * 获取系统状态
  * @returns {Object} 系统状态对象
  */
-export function getSystemStatus() {
+window.CoffeePriceData.getSystemStatus = function() {
   return {
     version: DATA_CONFIG.DATA_VERSION,
     recordCount: priceDataStore.data.length,
