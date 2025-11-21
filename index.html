@@ -565,7 +565,8 @@
             }
             
             const urlParams = new URLSearchParams(window.location.search);
-            const priceDataStr = urlParams.get('price_data');
+            // 支持两种参数名：priceData 和 price_data
+            const priceDataStr = urlParams.get('priceData') || urlParams.get('price_data');
             const forceRefresh = urlParams.get('force_refresh');
             const timestamp = urlParams.get('timestamp');
             
@@ -680,14 +681,29 @@
                     
                     // 首先尝试从统一数据同步系统获取所有数据
                     if (window.UnifiedCoffeePriceSync && typeof window.UnifiedCoffeePriceSync.getPriceData === 'function') {
-                        priceData = window.UnifiedCoffeePriceSync.getPriceData();
-                        console.log('Price data from UnifiedCoffeePriceSync.getPriceData():', priceData);
+                        const data = window.UnifiedCoffeePriceSync.getPriceData();
+                        console.log('Price data from UnifiedCoffeePriceSync.getPriceData():', data);
+                        
+                        // 添加详细调试信息
+                        if (data) {
+                            console.log('数据类型:', typeof data);
+                            // unified_sync_system.js返回的是单个对象，不是数组
+                            if (Array.isArray(data)) {
+                                priceData = data;
+                                console.log('数组长度:', priceData.length);
+                            } else if (typeof data === 'object') {
+                                console.log('对象键:', Object.keys(data));
+                                // 转换为数组格式以保持一致性
+                                priceData = [data];
+                            }
+                        }
                     }
                     
                     // 如果没有数据，尝试从URL参数获取
                     if ((!priceData || priceData.length === 0) && window.location.search) {
                         const urlParams = new URLSearchParams(window.location.search);
-                        const priceDataParam = urlParams.get('price_data');
+                // 支持两种参数名：priceData 和 price_data
+                const priceDataParam = urlParams.get('priceData') || urlParams.get('price_data');
                         if (priceDataParam) {
                             try {
                                 const urlData = JSON.parse(decodeURIComponent(priceDataParam));
@@ -702,14 +718,23 @@
                     }
                     
                     // 处理价格数据
-                    if (Array.isArray(priceData) && priceData.length > 0) {
-                        // 确保数据已排序，取第一个（最新的）
-                        const sortedData = priceData.sort((a, b) => {
-                            if (!a || !a.date) return 1;
-                            if (!b || !b.date) return -1;
-                            return new Date(b.date) - new Date(a.date);
-                        });
-                        const latestPrice = sortedData[0];
+                    if ((Array.isArray(priceData) && priceData.length > 0) || (priceData && typeof priceData === 'object')) {
+                        let latestPrice;
+                        
+                        // 如果是数组，取最新的数据
+                        if (Array.isArray(priceData)) {
+                            // 确保数据已排序，取第一个（最新的）
+                            const sortedData = priceData.sort((a, b) => {
+                                if (!a || !a.date) return 1;
+                                if (!b || !b.date) return -1;
+                                return new Date(b.date) - new Date(a.date);
+                            });
+                            latestPrice = sortedData[0];
+                        } else {
+                            // 如果是对象，直接使用
+                            latestPrice = priceData;
+                        }
+                        
                         console.log('Latest price:', latestPrice);
                         console.log('Latest price date:', latestPrice.date);
                            
@@ -717,6 +742,7 @@
                         const priceInt = Math.round(parseFloat(latestPrice.price));
                         // 直接更新价格，避免不必要的透明度变化
                         currentPriceElement.textContent = `¥${isNaN(priceInt) ? '0' : priceInt} / ตัน (吨)`;
+                        console.log('Price element updated with:', currentPriceElement.textContent);
                     } else {
                         console.warn('No price data available, using default');
                         // 如果没有数据，使用默认价格
@@ -875,7 +901,8 @@
                 } else {
                     // 回退到旧方法处理URL参数
                     const urlParams = new URLSearchParams(window.location.search);
-                    const priceDataStr = urlParams.get('price_data');
+                    // 支持两种参数名：priceData 和 price_data
+                    const priceDataStr = urlParams.get('priceData') || urlParams.get('price_data');
                     if (priceDataStr) {
                         console.log('延迟检查：发现URL参数中有数据（使用旧方法）');
                         try {

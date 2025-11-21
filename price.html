@@ -444,7 +444,8 @@
             try {
                 const dataStr = JSON.stringify(newPriceData);
                 const encoded = encodeURIComponent(dataStr);
-                redirectUrl = `index.html?price_data=${encoded}`;
+                // 使用priceData参数名以保持与统一同步系统的兼容性
+                redirectUrl = `index.html?priceData=${encoded}`;
                 console.log('构建跳转URL（带数据），长度:', redirectUrl.length);
             } catch (e) {
                 console.error('构建URL参数失败:', e);
@@ -474,6 +475,13 @@
                         try {
                             saveResult = window.UnifiedCoffeePriceSync.savePriceData(newPriceData);
                             console.log('保存结果:', saveResult);
+                            
+                            // 验证数据是否真的保存成功
+                            if (saveResult) {
+                                console.log('验证保存的数据...');
+                                const verifiedData = window.UnifiedCoffeePriceSync.getPriceData();
+                                console.log('验证数据结果:', verifiedData);
+                            }
                         } catch (saveError) {
                             console.error('保存时抛出异常:', saveError);
                             console.error('异常详情:', saveError.message, saveError.stack);
@@ -538,12 +546,8 @@
                                 console.error('触发事件失败:', eventError);
                             }
                         }
-                        
-                        // 显示成功通知
-                        showNotification('价格更新成功！\n正在跳转到首页...', true);
                     } else {
                         console.warn('价格数据保存失败，但将通过URL参数传递数据');
-                        showNotification('数据将通过URL传递\n正在跳转到首页...', true);
                     }
                     
                     // 清空表单输入框
@@ -559,7 +563,11 @@
                     
                     console.log('准备跳转到:', redirectUrl);
                     
-                    // 无论保存是否成功，都执行跳转（使用URL参数传递数据）
+                    // 根据保存结果调整提示信息和延迟时间
+                    const message = saveResult ? '价格更新成功！\n正在跳转到首页...' : '数据将通过URL传递\n正在跳转到首页...';
+                    showNotification(message, saveResult);
+                    
+                    // 执行跳转（使用URL参数传递数据）
                     setTimeout(() => {
                         console.log('执行跳转，目标URL:', redirectUrl);
                         try {
@@ -584,7 +592,8 @@
                     try {
                         const dataStr = JSON.stringify(newPriceData);
                         const encoded = encodeURIComponent(dataStr);
-                        const redirectUrl = `index.html?price_data=${encoded}`;
+                        // 使用priceData参数名以保持与统一同步系统的兼容性
+                        const redirectUrl = `index.html?priceData=${encoded}`;
                         console.log('发生错误，但尝试强制跳转...');
                         setTimeout(() => {
                             window.location.href = redirectUrl;

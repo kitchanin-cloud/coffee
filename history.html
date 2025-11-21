@@ -543,9 +543,10 @@
                         const unifiedData = window.UnifiedCoffeePriceSync.getPriceData();
                         console.log('从UnifiedCoffeePriceSync获取到数据:', unifiedData);
             
-                        if (unifiedData && Array.isArray(unifiedData.data) && unifiedData.data.length > 0) {
-                            // 返回并按日期排序
-                            return unifiedData.data.sort((a, b) => {
+                        // 处理UnifiedCoffeePriceSync返回的单个对象格式
+                        if (unifiedData && typeof unifiedData === 'object' && unifiedData.price) {
+                            // 转换为数组格式以便统一处理
+                            return [unifiedData].sort((a, b) => {
                                 if (!a || !a.date) return 1;
                                 if (!b || !b.date) return -1;
                                 return new Date(b.date) - new Date(a.date);
@@ -731,7 +732,8 @@
             }
             
             const urlParams = new URLSearchParams(window.location.search);
-            const priceDataStr = urlParams.get('price_data');
+            // 支持两种参数名：priceData 和 price_data
+            const priceDataStr = urlParams.get('priceData') || urlParams.get('price_data');
             const forceRefresh = urlParams.get('force_refresh');
             const timestamp = urlParams.get('timestamp');
             
@@ -821,7 +823,8 @@
             // 页面加载后立即再次检查URL参数（确保不遗漏）
             setTimeout(() => {
                 const urlParams = new URLSearchParams(window.location.search);
-                const priceDataStr = urlParams.get('price_data');
+                // 支持两种参数名：priceData 和 price_data
+                const priceDataStr = urlParams.get('priceData') || urlParams.get('price_data');
                 if (priceDataStr) {
                     console.log('延迟检查：发现URL参数中有数据');
                     try {
