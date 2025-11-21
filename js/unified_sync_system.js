@@ -45,11 +45,24 @@ const UnifiedCoffeePriceSync = (function() {
     // 保存价格数据
     function savePriceData(data) {
         try {
-            const payload = {
-                ...data,
-                timestamp: Date.now(),
-                deviceId: getDeviceId()
-            };
+            // 确保数据格式正确
+            let payload;
+            
+            // 如果传入的是数组，取第一个元素
+            if (Array.isArray(data)) {
+                payload = {
+                    ...data[0],
+                    timestamp: Date.now(),
+                    deviceId: getDeviceId()
+                };
+            } else {
+                // 如果是对象，直接使用
+                payload = {
+                    ...data,
+                    timestamp: Date.now(),
+                    deviceId: getDeviceId()
+                };
+            }
             
             localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
             
@@ -68,7 +81,16 @@ const UnifiedCoffeePriceSync = (function() {
     function getPriceData() {
         try {
             const dataStr = localStorage.getItem(STORAGE_KEY);
-            return dataStr ? JSON.parse(dataStr) : null;
+            const data = dataStr ? JSON.parse(dataStr) : null;
+            
+            // 返回数据时保持一致性
+            if (data) {
+                // 如果需要返回数组格式，可以在这里转换
+                // 但现在我们保持对象格式，因为这是单个价格数据
+                return data;
+            }
+            
+            return null;
         } catch (error) {
             console.error('获取价格数据失败:', error);
             return null;
@@ -177,7 +199,8 @@ const UnifiedCoffeePriceSync = (function() {
     function readFromURL() {
         try {
             const urlParams = new URLSearchParams(window.location.search);
-            const priceData = urlParams.get('priceData');
+            // 支持两种参数名：priceData 和 price_data
+            const priceData = urlParams.get('priceData') || urlParams.get('price_data');
             
             if (priceData) {
                 const data = JSON.parse(decodeURIComponent(priceData));
