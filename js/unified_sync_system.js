@@ -148,18 +148,16 @@ const UnifiedCoffeePriceSync = (function() {
     }
     
     // 处理广播消息
+    // 修改handleBroadcastMessage函数，确保即使在同一设备上也能正确处理消息
     function handleBroadcastMessage(event) {
         const message = event.data;
         
         if (message.type === 'PRICE_DATA_UPDATE' || message.type === 'price-update') {
-            // 忽略自己发送的消息
-            if (message.senderId !== getDeviceId()) {
-                // 触发自定义事件通知页面数据已更新
-                window.dispatchEvent(new CustomEvent('unifiedCoffeePriceDataUpdated', {
-                    detail: message.data
-                }));
-                console.log('接收到其他设备的数据更新:', message.data);
-            }
+            // 触发自定义事件通知页面数据已更新（移除了设备ID检查）
+            window.dispatchEvent(new CustomEvent('unifiedCoffeePriceDataUpdated', {
+                detail: message.data
+            }));
+            console.log('接收到数据更新:', message.data);
         }
     }
     
@@ -175,14 +173,11 @@ const UnifiedCoffeePriceSync = (function() {
                     actualData = data.data;
                 }
                 
-                // 忽略自己设备的更新
-                if (actualData && actualData.deviceId !== getDeviceId()) {
-                    // 触发自定义事件通知页面数据已更新
-                    window.dispatchEvent(new CustomEvent('unifiedCoffeePriceDataUpdated', {
-                        detail: actualData
-                    }));
-                    console.log('检测到存储数据变化:', actualData);
-                }
+                // 触发自定义事件通知页面数据已更新（移除了设备ID检查）
+                window.dispatchEvent(new CustomEvent('unifiedCoffeePriceDataUpdated', {
+                    detail: actualData
+                }));
+                console.log('检测到存储数据变化:', actualData);
             } catch (error) {
                 console.error('处理存储变化失败:', error);
             }
