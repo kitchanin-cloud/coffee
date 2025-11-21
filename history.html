@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- 添加防缓存控制 -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    
+    <!-- 引入全局共享数据管理和同步脚本 -->
+    <script src="./js/unified_sync_system.js"></script>
+    <script src="./price_sync_enhanced.js"></script>
+    
+    <!-- 数据同步优化脚本 - 与统一数据系统集成 -->
+    <script>
+    // 页面加载时检查是否需要强制刷新数据
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('history.html - 初始化数据同步系统');
+        
+        // 初始化CoffeePriceSystem，如果已在全局定义
+        if (window.CoffeePriceSystem && typeof window.CoffeePriceSystem.init === 'function') {
+            console.log('初始化CoffeePriceSystem');
+            window.CoffeePriceSystem.init();
+        }
+        
+        // 检查URL参数，判断是否需要强制刷新
+        const urlParams = new URLSearchParams(window.location.search);
+        const forceRefresh = urlParams.get('force') === 'true';
+        const hasRecentHashData = window.location.hash && window.location.hash.length > 10;
+        
+        // 如果需要强制刷新或者有哈希数据，尝试强制刷新
+        if (forceRefresh || hasRecentHashData) {
+            console.log('检测到需要强制刷新数据的条件');
+            setTimeout(() => {
+                if (window.UnifiedCoffeePriceSync && typeof window.UnifiedCoffeePriceSync.syncData === 'function') {
+                    window.UnifiedCoffeePriceSync.syncData();
+                } else if (typeof window.forceRefreshData === 'function') {
+                    window.forceRefreshData();
+                } else {
+                    console.warn('强制刷新函数不可用');
+                }
+            }, 300);
+        }
+        
+        // 输出同步状态信息
+        if (window.UnifiedCoffeePriceSync && typeof window.UnifiedCoffeePriceSync.getSyncStatus === 'function') {
+            const syncStatus = window.UnifiedCoffeePriceSync.getSyncStatus();
+            console.log('当前数据同步状态:', syncStatus);
+        }
+    });
+    </script>
+    <title>价格历史 - Price History</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+            margin: 0;
+            padding: 20px; /* 为页面添加一些边距 */
+            color: white;
+            overflow-x: hidden;
+            /* 恢复原始的背景设置，使用scroll而不是fixed来避免移动浏览器优化问题 */
+            background-image: url('images/c01.jpg');
+            background-position: center;
+            background-repeat: no-repeat;
+            background-size: cover;
+            background-attachment: scroll;
+            min-height: 100vh;
+        }
+
+        header {
+            background-color: rgba(0, 0, 0, 0.6);
+            text-align: center;
+            padding: 30px 20px;
+            border-radius: 15px;
+            margin-bottom: 30px; /* 与下方内容隔开 */
+        }
+
+        h1 {
+            font-size: 1.8em;
+            letter-spacing: 2px;
+            font-weight: bold;
+            color: #FFDDC1;
+            text-shadow: 3px 3px 10px rgba(0, 0, 0, 0.7);
+            margin: 0;
+            line-height: 1.5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 25px; /* 修改点：增加三种文字之间的距离，不影响国旗与对应文字的间距 */
+        }
+        
+        /* 重要：以下两个margin-right设置是控制国旗与文字间距的关键 */
+        
+        
+        /* 调整国旗与文字间距，与index页面保持一致 */
+        .flag {
+            display: inline-flex;
+            align-items: center;
+            margin-right: -3px; /* 减小负边距，增加国旗与文字之间的距离 */
+        }
+        
+        .flag img {
+            width: 28px;
+            height: 18px;
+            object-fit: cover;
+            border-radius: 2px;
+            vertical-align: middle;
+            margin-right: -1px; /* 减小负边距，增加国旗图片与文字之间的距离 */
+        }
+
+        .container {
+            background-color: rgba(0, 0, 0, 0.5);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+            max-width: 900px; /* 从 800px 增加到 900px，让表格更宽 */
+            margin: 0 auto; /* 水平居中 */
+            transition: transform 0.3s ease, box-shadow 0.3s ease; /* 添加过渡效果 */
+        }
+        
+        .container:hover {
+            transform: translateY(-5px); /* 悬浮时轻微上移 */
+            box-shadow: 0 12px 35px rgba(0, 0, 0, 0.5); /* 悬浮时阴影加深 */
+        }
+
+        .history-table {
+            width: 100%;
+            border-collapse: collapse; /* 合并边框 */
+            margin-bottom: 30px;
+        }
+
+        .history-table th, .history-table td {
+            padding: 15px;
+            text-align: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2); /* 行与行之间的分隔线 */
+        }
+
+        .history-table thead th {
+            color: #FFEB3B;
+            font-size: 1.2em;
+            font-weight: bold;
+            white-space: nowrap; /* 防止表头文字换行 */
+        }
+        
+        .history-table thead th span {
+            /* 移除了 display: block，让语言在同一行显示 */
+            line-height: 1.4;
+        }
+
+        .history-table tbody tr:last-child td {
+            border-bottom: none; /* 最后一行无下边框 */
+        }
+        
+        .history-table tbody td {
+            font-size: 1.1em;
+        }
+
+        .buttons {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .buttons button {
+            background-color: #FFEB3B;
+            color: #333;
+            padding: 15px 30px;
+            border: none;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            font-weight: bold;
+            line-height: 1.5;
+            font-size: 1em;
+        }
+        
+        .buttons button span {
+            display: block;
+        }
+
+        .buttons button:hover {
+            background-color: #FF9800;
+            transform: scale(1.05);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        /* 分页控件样式 - 加强居中对齐 */
+        .pagination {
+            display: flex !important;
+            justify-content: center !important;
+            align-items: center !important;
+            margin: 30px auto !important;
+            gap: 15px;
+            max-width: 100%;
+        }
+
+        .pagination button {
+            background-color: #FFEB3B;
+            color: #333;
+            padding: 10px 20px;
+            border: none;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            font-weight: bold;
+            line-height: 1.5;
+            font-size: 1em;
+            display: flex;
+            flex-direction: row;
+            justify-content: center;
+            align-items: center;
+            min-height: 40px;
+        }
+
+        /* 为不同语言文本之间添加间距 */
+        .pagination button span:not(:last-child) {
+            margin-right: 8px;
+        }
+
+        .pagination button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .pagination button:hover:not(:disabled) {
+            background-color: #FF9800;
+            transform: scale(1.05);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .page-numbers {
+            display: flex;
+            gap: 10px;
+        }
+
+        .page-btn {
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 !important;
+        }
+
+        .page-btn.active {
+            background-color: #FF9800;
+            color: white;
+        }
+
+        /* --- 响应式设计：移动设备 --- */
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+            
+            /* 优化移动端标题和国旗对齐样式 - 保持纵向排列并居中 */
+            header {
+                padding: 15px;
+                margin: 0;
+                text-align: center;
+                background-color: rgba(0, 0, 0, 0.6);
+                border-radius: 15px;
+            }
+            
+            h1 {
+                font-size: 1.0em;
+                display: flex !important;
+                flex-direction: column !important;
+                justify-content: center !important;
+                align-items: center !important;
+                white-space: normal;
+                gap: 8px;
+                margin: 0;
+                padding: 0;
+                text-align: center;
+                flex-wrap: nowrap !important;
+            }
+            
+            h1 .lang-en {
+                font-size: 0.9em;
+            }
+            
+            /* 确保每个语言和国旗组合作为一个整体显示，并正确排列 */
+            h1 > span {
+                display: flex !important;
+                align-items: center !important;
+                justify-content: flex-start !important;
+                white-space: nowrap;
+                gap: 5px;
+                margin: 0;
+                padding: 0;
+                width: 100%;
+                position: static;
+            }
+            
+            /* 移除HTML中的空格影响 */
+            h1 > span > * {
+                display: inline-flex !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+            
+            /* 国旗容器样式 - 放在文字前面 */
+            .flag {
+                display: inline-flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                width: 22px !important;
+                height: 14px !important;
+                flex-shrink: 0;
+                position: static;
+            }
+            
+            /* 国旗图片样式 */
+            .flag img {
+                width: 22px !important;
+                height: 14px !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                display: block !important;
+                position: static;
+            }
+            
+            /* 文字首字母居左对齐 */
+            .lang-en, .lang-th, .lang-zh {
+                text-align: left !important;
+                justify-content: flex-start !important;
+            }
+            
+            /* 分页按钮样式 - 修复上一页/下一页按钮歪斜问题 */
+            .pagination {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 10px;
+                margin-top: 20px;
+            }
+            
+            #prev-page, #next-page {
+                display: flex;
+                flex-direction: row;
+                align-items: center;
+                justify-content: center;
+                white-space: nowrap;
+            }
+            
+            /* 移动设备其他样式 */
+            .container {
+                padding: 20px 15px;
+                width: 100%;
+                box-sizing: border-box;
+                overflow-x: auto;
+            }
+            
+            /* 让表格可以水平滚动 */
+            .table-container {
+                width: 100%;
+                overflow-x: auto;
+            }
+            
+            .history-table {
+                min-width: 400px;
+            }
+            
+            .history-table th, .history-table td {
+                padding: 8px 5px;
+                font-size: 12px;
+            }
+            
+            .history-table thead th {
+                font-size: 1em;
+            }
+            
+            .buttons button {
+                padding: 10px 20px;
+                font-size: 0.9em;
+                text-align: center;
+            }
+            
+            /* 确保按钮里的文字在移动端居中对齐 */
+            .buttons button span {
+                display: block;
+                text-align: center !important;
+            }
+
+            /* 移动端分页样式调整 */
+            .pagination {
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                flex-wrap: wrap;
+                gap: 8px;
+                margin: 30px 0;
+            }
+
+            .pagination button {
+                padding: 8px 15px;
+                font-size: 0.9em;
+                min-height: 35px;
+            }
+
+            .page-btn {
+                width: 35px !important;
+                height: 35px !important;
+            }
+
+            /* 确保分页按钮里的文字在移动端正确显示 */
+            #prev-page span,
+            #next-page span {
+                display: block;
+                text-align: center !important;
+                font-size: 0.8em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>
+            <span><span class="flag"><img src="images/flagUK.png" alt="英国国旗"></span> <span class="lang-en">Price History</span></span>
+            <span><span class="flag"><img src="images/flagThailand.png" alt="泰国国旗"></span> <span class="lang-th">ประวัติราคา</span></span>
+            <span><span class="flag"><img src="images/flagChina.png" alt="中国国旗"></span> <span class="lang-zh">往日价格查询</span></span>
+        </h1>
+    </header>
+
+    <div class="container">
+        <div class="table-container">
+            <table class="history-table">
+                <thead>
+                    <tr>
+                        <th>
+                            <span class="lang-en">Date</span> / <span class="lang-th">วันที่</span> / <span class="lang-zh">日期</span>
+                        </th>
+                        <th>
+                            <span class="lang-en">Price</span> / <span class="lang-th">ราคา</span> / <span class="lang-zh">价格</span>
+                        </th>
+                    </tr>
+                </thead>
+                <tbody id="history-data-body">
+                    <!-- 历史数据将由 JS 动态插入这里 -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 分页控件 -->
+        <div class="pagination">
+            <button id="prev-page" disabled>
+                <span class="lang-en">Previous</span>
+            </button>
+            <div class="page-numbers">
+                <button class="page-btn active" data-page="1">1</button>
+                <button class="page-btn" data-page="2">2</button>
+                <button class="page-btn" data-page="3">3</button>
+            </div>
+            <button id="next-page">
+                <span class="lang-en">Next</span>
+            </button>
+        </div>
+
+        <div class="buttons">
+            <button onclick="window.location.href='index.html'">
+                <span class="lang-en">Back to Home</span>
+                <span class="lang-th">กลับไปที่หน้าหลัก</span>
+                <span class="lang-zh">返回主页</span>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const tableBody = document.getElementById('history-data-body');
+            const prevBtn = document.getElementById('prev-page');
+            const nextBtn = document.getElementById('next-page');
+            const pageBtns = document.querySelectorAll('.page-btn');
+            const itemsPerPage = 10;
+            let currentPage = 1;
+            let totalPages = 3; // 初始值，将在获取数据后动态更新
+
+            // 存储需要在页面卸载时清理的函数
+            const cleanupFunctions = [];
+
+            // 检测是否为移动设备
+            const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+            
+            // 设置增强版同步监听器（第一时间接收更新）
+            if (window.PriceSyncEnhanced && typeof window.PriceSyncEnhanced.setupListeners === 'function') {
+                console.log('设置增强版同步监听器...');
+                window.PriceSyncEnhanced.setupListeners(function(updatedData) {
+                    console.log('收到实时数据更新:', updatedData);
+                    // 如果收到新数据，立即保存并刷新显示
+                    if (updatedData && updatedData.date && updatedData.price) {
+                        if (window.UnifiedCoffeePriceSync && window.UnifiedCoffeePriceSync.savePriceData) {
+                            window.UnifiedCoffeePriceSync.savePriceData(updatedData);
+                        }
+                        renderPage(currentPage);
+                    }
+                });
+            }
+            
+            // 检查URL参数中是否有新数据
+            if (window.PriceSyncEnhanced && typeof window.PriceSyncEnhanced.readFromURL === 'function') {
+                const urlData = window.PriceSyncEnhanced.readFromURL();
+                if (urlData && urlData.date && urlData.price) {
+                    console.log('从URL读取到新数据，立即保存:', urlData);
+                    if (window.UnifiedCoffeePriceSync && window.UnifiedCoffeePriceSync.savePriceData) {
+                            window.UnifiedCoffeePriceSync.savePriceData(urlData);
+                    }
+                    // 清除URL参数，避免重复处理
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                }
+            }
+
+            // 监听价格数据更新（跨设备同步）
+            function handlePriceUpdate(event) {
+                console.log('检测到价格更新，刷新历史记录显示...');
+                // 直接刷新数据，避免闪屏
+                renderPage(currentPage);
+            }
+
+            // 添加对多种同步相关事件的监听
+            window.addEventListener('price-updated', handlePriceUpdate);
+            window.addEventListener('price-data-saved', handlePriceUpdate);
+            window.addEventListener('global-data-updated', handlePriceUpdate);
+            window.addEventListener('unifiedCoffeePriceDataUpdated', handlePriceUpdate);
+
+            // 基础价格历史数据（作为回退数据）
+            const basePriceData = [
+                { date: '2025-08-30', price: '58901' },
+                { date: '2025-08-29', price: '57632' },
+                { date: '2025-08-28', price: '59231' },
+                { date: '2025-08-27', price: '60123' },
+                { date: '2025-08-26', price: '59876' },
+                { date: '2025-08-25', price: '59321' },
+                { date: '2025-08-24', price: '61987' },
+                { date: '2025-08-23', price: '57890' },
+                { date: '2025-08-22', price: '62543' },
+                { date: '2025-08-21', price: '58432' }
+            ];
+
+            // 获取价格数据 - 使用3.0数据管理系统
+    function getPriceData() {
+        try {
+            console.log('从3.0数据管理系统获取价格数据...');
+            
+            // 优先使用统一的数据管理系统（getData已经做了去重处理）
+            if (window.UnifiedCoffeePriceSync && typeof window.UnifiedCoffeePriceSync.getPriceData === 'function') {
+                        const allPriceData = window.UnifiedCoffeePriceSync.getPriceData();
+                        console.log('从UnifiedCoffeePriceSync获取到数据，记录数:', allPriceData.length);
+
+                if (Array.isArray(allPriceData) && allPriceData.length > 0) {
+                    // getData已经做了去重，直接返回并按日期排序
+                    return allPriceData.sort((a, b) => {
+                        if (!a || !a.date) return 1;
+                        if (!b || !b.date) return -1;
+                        return new Date(b.date) - new Date(a.date);
+                    });
+                }
+            }
+
+            // 尝试使用UnifiedCoffeePriceSync的getSyncStatus方法获取同步状态
+            if (window.UnifiedCoffeePriceSync && typeof window.UnifiedCoffeePriceSync.getSyncStatus === 'function') {
+                const syncStatus = window.UnifiedCoffeePriceSync.getSyncStatus();
+                console.log('从UnifiedCoffeePriceSync获取到同步状态:', syncStatus);
+            }
+            
+            // 从localStorage获取数据作为后备
+            let storedData = null;
+            try {
+                const storedDataStr = localStorage.getItem('coffee_price_data_v3');
+                if (storedDataStr) {
+                    const parsedData = JSON.parse(storedDataStr);
+                    storedData = Array.isArray(parsedData.data) ? parsedData.data : [];
+                    console.log('从localStorage获取到数据，记录数:', storedData.length);
+                }
+            } catch (localStorageError) {
+                console.warn('从localStorage读取数据失败:', localStorageError);
+            }
+
+            // 如果localStorage中有有效数据，使用它
+            if (Array.isArray(storedData) && storedData.length > 0) {
+                return storedData.sort((a, b) => new Date(b.date) - new Date(a.date));
+            }
+
+            // 最后回退到使用基础数据
+            console.log('没有找到更新的数据，使用基础数据');
+            return [...basePriceData].sort((a, b) => new Date(b.date) - new Date(a.date));
+        } catch (error) {
+            console.error('获取价格数据时出错:', error);
+            // 出错时回退到使用基础数据
+            return [...basePriceData].sort((a, b) => new Date(b.date) - new Date(a.date));
+        }
+    }
+    
+    // 添加时间戳参数避免缓存
+    function addCacheBuster(url) {
+        const separator = url.includes('?') ? '&' : '?';
+        return url + separator + '_t=' + Date.now();
+    }
+
+            // 动态计算总页数
+            function calculateTotalPages(data) {
+                return Math.ceil(data.length / itemsPerPage);
+            }
+
+            // 渲染当前页的数据
+            function renderPage(page) {
+                tableBody.innerHTML = '';
+
+                // 获取当前要使用的价格数据
+                const currentPriceData = getPriceData();
+
+                // 动态更新总页数
+                totalPages = calculateTotalPages(currentPriceData);
+
+                // 确保当前页码不超过总页数
+                if (page > totalPages && totalPages > 0) {
+                    page = totalPages;
+                    currentPage = page;
+                }
+
+                // 计算当前页显示的数据范围
+                const startIndex = (page - 1) * itemsPerPage;
+                const endIndex = Math.min(startIndex + itemsPerPage, currentPriceData.length);
+                const pageData = currentPriceData.slice(startIndex, endIndex);
+
+                if (pageData && pageData.length > 0) {
+                    pageData.forEach(record => {
+                        // 直接使用date字段作为日期显示（已通过getPriceData去重，每个日期只有一条最新记录）
+                        const displayDate = record.date || (record.addTime ? record.addTime.split(' ')[0] : '');
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${displayDate}</td>
+                            <td>¥ ${record.price}</td>
+                        `;
+                        tableBody.appendChild(row);
+                    });
+                } else {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `<td colspan="2">暂无历史数据</td>`;
+                    tableBody.appendChild(row);
+                }
+
+                // 更新分页按钮状态
+                updatePaginationButtons(page);
+            }
+
+            // 更新分页按钮状态
+            function updatePaginationButtons(page) {
+                // 更新当前页码高亮
+                pageBtns.forEach(btn => {
+                    const btnPage = parseInt(btn.dataset.page);
+                    btn.classList.remove('active');
+
+                    // 高亮当前页码
+                    if (btnPage === page) {
+                        btn.classList.add('active');
+                    }
+
+                    // 根据总页数显示或隐藏页码按钮
+                    if (btnPage > totalPages) {
+                        btn.style.display = 'none';
+                    } else {
+                        btn.style.display = 'inline-block';
+                    }
+                });
+
+                // 更新上一页/下一页按钮状态
+                prevBtn.disabled = page === 1;
+                nextBtn.disabled = page === totalPages;
+
+                // 如果总页数为0或1，隐藏分页控件
+                const paginationContainer = document.querySelector('.pagination');
+                if (paginationContainer) {
+                    paginationContainer.style.display = totalPages > 1 ? 'block' : 'none';
+                }
+            }
+
+            // 增强版同步策略
+            function setupEnhancedSync() {
+                console.log('初始化增强版价格同步机制...');
+                
+                // 如果有UnifiedCoffeePriceSync，使用它的同步功能
+                if (window.UnifiedCoffeePriceSync && typeof window.UnifiedCoffeePriceSync.setupListeners === 'function') {
+                    // 初始化同步系统
+                    window.UnifiedCoffeePriceSync.setupListeners();
+                }
+                
+                if (window.UnifiedCoffeePriceSync && typeof window.UnifiedCoffeePriceSync.syncData === 'function') {
+                    // 立即执行一次同步
+                    window.UnifiedCoffeePriceSync.syncData();
+                }
+                
+                // 前5秒内频繁检查，提高移动端提交后的同步速度
+                let checkCount = 0;
+                const quickCheckTimer = setInterval(() => {
+                    checkCount++;
+                    console.log(`快速同步检查 #${checkCount}`);
+                    
+                    if (window.UnifiedCoffeePriceSync && typeof window.UnifiedCoffeePriceSync.syncData === 'function') {
+                        window.UnifiedCoffeePriceSync.syncData();
+                    }
+                    
+                    if (checkCount >= 10) { // 前5秒每秒检查2次
+                        clearInterval(quickCheckTimer);
+                        console.log('快速同步检查结束');
+                        
+                        // 后续保持稳定的同步检查频率
+                        startRegularSync();
+                    }
+                }, 500);
+                
+                cleanupFunctions.push(() => clearInterval(quickCheckTimer));
+            }
+
+            // 启动定期同步机制
+            function startRegularSync() {
+                // 设置定期同步数据（PC端5秒，移动端15秒）
+                const syncInterval = isMobile ? 15000 : 5000;
+                
+                const syncTimer = setInterval(() => {
+                    if (window.UnifiedCoffeePriceSync && typeof window.UnifiedCoffeePriceSync.syncData === 'function') {
+                        window.UnifiedCoffeePriceSync.syncData();
+                    }
+                }, syncInterval);
+                
+                console.log(`设置定期同步间隔: ${syncInterval}ms`);
+                cleanupFunctions.push(() => clearInterval(syncTimer));
+            }
+
+            // 初始化增强版同步
+            setupEnhancedSync();
+
+            // ===== 立即检查URL参数中的新数据 =====
+            console.log('检查URL参数中的新数据...');
+            
+            // 确保数据系统已初始化
+            if (window.UnifiedCoffeePriceSync && typeof window.UnifiedCoffeePriceSync.init === 'function') {
+                try {
+                    window.UnifiedCoffeePriceSync.init();
+                    console.log('统一数据同步系统已初始化');
+                } catch (initError) {
+                    console.error('初始化统一数据同步系统失败:', initError);
+                }
+            }
+            
+            const urlParams = new URLSearchParams(window.location.search);
+            const priceDataStr = urlParams.get('price_data');
+            const forceRefresh = urlParams.get('force_refresh');
+            const timestamp = urlParams.get('timestamp');
+            
+            if (priceDataStr) {
+                try {
+                    const decoded = decodeURIComponent(priceDataStr);
+                    const urlData = JSON.parse(decoded);
+                    console.log('从URL读取到新数据:', urlData);
+                    if (urlData && urlData.date && urlData.price) {
+                        // 确保URL数据有时间戳（如果没有，使用当前时间）
+                        if (!urlData.timestamp) {
+                            urlData.timestamp = Date.now();
+                            console.log('为URL数据添加时间戳:', urlData.timestamp);
+                        }
+                        
+                        // 立即保存数据（savePriceData会检查时间戳，只保存更新的数据）
+                        if (window.UnifiedCoffeePriceSync && window.UnifiedCoffeePriceSync.savePriceData) {
+                            console.log('立即保存URL中的数据...');
+                            const saved = window.UnifiedCoffeePriceSync.savePriceData(urlData);
+                            console.log('URL数据保存结果:', saved);
+                            if (saved) {
+                                // 保存成功后立即刷新显示
+                                setTimeout(() => {
+                                    renderPage(currentPage);
+                                    // 延迟清除URL参数，确保数据已保存和显示
+                                    setTimeout(() => {
+                                        window.history.replaceState({}, document.title, window.location.pathname);
+                                        console.log('URL参数已清除');
+                                    }, 500);
+                                }, 200);
+                            } else {
+                                // 如果保存失败，仍然尝试刷新（可能数据已在其他地方或时间戳更旧）
+                                console.log('URL数据未保存（可能本地数据更新），刷新显示');
+                                setTimeout(() => {
+                                    renderPage(currentPage);
+                                }, 200);
+                            }
+                        } else {
+                            console.error('UnifiedCoffeePriceSync.savePriceData不可用');
+                            // 即使保存函数不可用，也尝试刷新
+                            setTimeout(() => {
+                                renderPage(currentPage);
+                            }, 200);
+                        }
+                    }
+                } catch (e) {
+                    console.error('解析URL数据失败:', e);
+                    // 即使解析失败，也尝试刷新数据
+                    setTimeout(() => {
+                        renderPage(currentPage);
+                    }, 200);
+                }
+            } else {
+                // 即使没有URL参数，也刷新一次数据，确保显示最新
+                console.log('没有URL参数，刷新本地数据');
+                setTimeout(() => {
+                    renderPage(currentPage);
+                }, 200);
+            }
+            
+            // 处理强制刷新参数
+            if (forceRefresh === 'true' && timestamp) {
+                console.log('检测到强制刷新请求，时间戳:', timestamp);
+                // 强制刷新数据，确保显示最新数据
+                setTimeout(() => {
+                    renderPage(currentPage);
+                    // 延迟清除强制刷新参数，确保数据已刷新
+                    setTimeout(() => {
+                        const newUrl = new URL(window.location.href);
+                        newUrl.searchParams.delete('force_refresh');
+                        newUrl.searchParams.delete('timestamp');
+                        window.history.replaceState({}, document.title, newUrl.toString());
+                        console.log('强制刷新参数已清除');
+                    }, 500);
+                }, 200);
+            } else {
+                // 页面加载时立即渲染数据
+                console.log('页面加载，立即渲染价格数据...');
+                setTimeout(() => {
+                    renderPage(currentPage);
+                }, 200);
+            }
+            
+            // 初始化第一页（确保页面有数据）
+            renderPage(1);
+            
+            // 页面加载后立即再次检查URL参数（确保不遗漏）
+            setTimeout(() => {
+                const urlParams = new URLSearchParams(window.location.search);
+                const priceDataStr = urlParams.get('price_data');
+                if (priceDataStr) {
+                    console.log('延迟检查：发现URL参数中有数据');
+                    try {
+                        const decoded = decodeURIComponent(priceDataStr);
+                        const urlData = JSON.parse(decoded);
+                        if (urlData && urlData.date && urlData.price) {
+                            // 确保URL数据有时间戳（如果没有，使用当前时间）
+                            if (!urlData.timestamp) {
+                                urlData.timestamp = Date.now();
+                                console.log('延迟检查：为URL数据添加时间戳:', urlData.timestamp);
+                            }
+                            
+                            if (window.UnifiedCoffeePriceSync && window.UnifiedCoffeePriceSync.savePriceData) {
+                                const saved = window.UnifiedCoffeePriceSync.savePriceData(urlData);
+                                if (saved) {
+                                    console.log('延迟保存URL数据成功');
+                                    // 保存后立即刷新显示
+                                    setTimeout(() => {
+                                        renderPage(currentPage);
+                                        // 延迟清除URL参数，确保数据已保存和显示
+                                        setTimeout(() => {
+                                            window.history.replaceState({}, document.title, window.location.pathname);
+                                            console.log('延迟检查：URL参数已清除');
+                                        }, 300);
+                                    }, 100);
+                                } else {
+                                    console.log('延迟检查：URL数据未保存（可能本地数据更新）');
+                                    renderPage(currentPage);
+                                }
+                            }
+                        }
+                    } catch (e) {
+                        console.error('延迟处理URL数据失败:', e);
+                    }
+                } else {
+                    // 即使没有URL参数，也刷新一次数据，确保显示最新
+                    console.log('延迟检查：没有URL参数，刷新本地数据');
+                    renderPage(currentPage);
+                }
+            }, 500);
+
+            // 点击页码按钮
+            pageBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    currentPage = parseInt(btn.dataset.page);
+                    renderPage(currentPage);
+                });
+            });
+
+            // 上一页
+            prevBtn.addEventListener('click', () => {
+                if (currentPage > 1) {
+                    currentPage--;
+                    renderPage(currentPage);
+                }
+            });
+
+            // 下一页
+            nextBtn.addEventListener('click', () => {
+                if (currentPage < totalPages) {
+                    currentPage++;
+                    renderPage(currentPage);
+                }
+            });
+
+            // 页面卸载时清理所有监听器和计时器
+            window.addEventListener('beforeunload', () => {
+                // 执行所有清理函数
+                cleanupFunctions.forEach(fn => {
+                    try {
+                        fn();
+                    } catch (error) {
+                        console.error('清理资源时出错:', error);
+                    }
+                });
+                
+                // 移除事件监听器
+                window.removeEventListener('price-updated', handlePriceUpdate);
+                window.removeEventListener('price-data-saved', handlePriceUpdate);
+                window.removeEventListener('global-data-updated', handlePriceUpdate);
+                window.removeEventListener('unifiedCoffeePriceDataUpdated', handlePriceUpdate);
+            });
+        });
+    </script>
+</body>
+</html>
+

@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- 添加防缓存控制 -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    
+    <!-- 引入全局共享数据管理和同步脚本 -->
+    <script src="./js/unified_sync_system.js"></script>
+    <script src="./price_sync_enhanced.js"></script>
+    
+    <title>咖啡价格管理</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-image: url('images/c01.jpg?v=1');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            font-family: 'Arial', sans-serif;
+            color: #FFDDC1;
+            background-color: #1a1a1a;
+            line-height: 1.6;
+            position: relative;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* 覆盖背景图的黑色半透明遮罩 */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            z-index: -1;
+        }
+
+        /* 强制GIF动画播放的隐藏辅助元素 */
+        .gif-animation-helper {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        header {
+            background-color: rgba(40, 40, 40, 0.8);
+            backdrop-filter: blur(5px);
+            border-bottom: 2px solid #FFEB3B;
+            padding: 15px 20px;
+            text-align: center;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        h1 {
+            font-size: 1.5em;
+            color: #FFEB3B;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            line-height: 1.3;
+        }
+
+        .container {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .admin-box {
+            background-color: rgba(40, 40, 40, 0.9);
+            border: 2px solid #FFEB3B;
+            border-radius: 20px;
+            padding: 30px;
+            width: 100%;
+            max-width: 400px;
+            box-shadow: 0 8px 32px rgba(255, 235, 59, 0.15);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .admin-box:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 35px rgba(255, 235, 59, 0.25);
+        }
+
+        .admin-box h2 {
+            color: #FFEB3B;
+            text-align: center;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #FFEB3B;
+        }
+
+        .admin-box h2 .lang-zh {
+            display: block;
+            font-size: 1.2em;
+        }
+
+        .admin-box h2 .lang-en {
+            display: block;
+            font-size: 0.9em;
+            color: #FFDDC1;
+            margin-top: 5px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+            color: #FFDDC1;
+        }
+
+        .form-group input {            width: 100%;            padding: 12px 15px;            border: 2px solid #FFEB3B;            border-radius: 10px;            background-color: rgba(255, 255, 255, 0.1);            color: #FFDDC1;            font-size: 1.1em;            outline: none;            transition: all 0.3s ease;        }
+
+        /* 隐藏数字输入框的上下箭头 */        input[type=number]::-webkit-inner-spin-button,         input[type=number]::-webkit-outer-spin-button {             -webkit-appearance: none;             margin: 0;         }        input[type=number] {            -moz-appearance: textfield;        }
+
+        .form-group input:focus {
+            background-color: rgba(255, 255, 255, 0.2);
+            border-color: #FF9800;
+        }
+
+        .form-group input::placeholder {
+            color: rgba(255, 221, 193, 0.5);
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 30px;
+        }
+
+        .form-actions button {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-width: 100px;
+        }
+
+        .submit-btn {
+            background-color: #FFEB3B;
+            color: #1a1a1a;
+        }
+
+        .submit-btn:hover {
+            background-color: #FFC107;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 235, 59, 0.3);
+        }
+
+        .cancel-btn {
+            background-color: rgba(255, 255, 255, 0.1);
+            color: #FFDDC1;
+            border: 2px solid #FFDDC1;
+        }
+
+        .cancel-btn:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 12px 25px;
+            border-radius: 20px;
+            font-weight: bold;
+            z-index: 2000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.5s ease;
+        }
+
+        .notification.success {
+            background-color: rgba(76, 175, 80, 0.9);
+            color: white;
+        }
+
+        .notification.error {
+            background-color: rgba(244, 67, 54, 0.9);
+            color: white;
+        }
+
+        .notification.show {
+            opacity: 1;
+            visibility: visible;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        footer {
+            background-color: rgba(40, 40, 40, 0.8);
+            backdrop-filter: blur(5px);
+            border-top: 2px solid #FFEB3B;
+            padding: 15px 20px;
+            text-align: center;
+            margin-top: auto;
+        }
+
+        footer p {
+            color: #FFDDC1;
+            font-size: 0.9em;
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 1.2em;
+            }
+
+            .admin-box {
+                padding: 25px 20px;
+            }
+
+            .form-actions {
+                flex-direction: column;
+            }
+
+            .form-actions button {
+                width: 100%;
+            }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Coffee Bean Admin System</h1>
+    </header>
+
+    <div class="container">
+        <div class="admin-box">
+            <h2>
+                <span class="lang-zh">当日咖啡豆价格</span>
+                <span class="lang-en">Today's Coffee Price</span>
+            </h2>
+            <form id="price-form">
+                <div class="form-group">
+                    <label for="coffee-price">
+                        <span class="lang-zh">价格（元/吨）</span>
+                        <span class="lang-en">Price (Yuan/Ton)</span>
+                    </label>
+                    <input type="number" id="coffee-price" name="coffeePrice" placeholder="请输入价格" required min="0" step="any">
+                </div>
+                <div class="form-actions">
+            <button type="submit" class="submit-btn">
+                <span class="lang-zh">提交</span>
+                <span class="lang-en">Submit</span>
+            </button>
+            <button type="button" class="cancel-btn" onclick="window.location.href='index.html'">
+                <span class="lang-zh">取消</span>
+                <span class="lang-en">Cancel</span>
+            </button>
+        </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="notification" class="notification"></div>
+
+    <footer>
+        <p>&copy; 2025 咖啡豆公司 - 管理后台</p>
+    </footer>
+
+        
+        
+        <script>
+        // 从数据文件导入价格数据和函数
+        // 注意：主要使用统一数据同步系统，通过全局API进行数据管理
+    // 依赖UnifiedCoffeePriceSync全局对象进行数据操作
+        // 将savePriceData函数暴露给全局作用域，以便跨设备同步工具可以访问
+        
+        // 确保脚本加载完成后再初始化
+        function initializePriceSystem() {
+            console.log('=== price.html 初始化数据系统 ===');
+            
+            // 检查脚本是否已加载
+            if (!window.UnifiedCoffeePriceSync) {
+            console.error('统一数据同步系统脚本未加载！');
+                // 如果脚本未加载，等待一下再试
+                setTimeout(initializePriceSystem, 100);
+                return;
+            }
+            
+            // 确保数据系统已初始化
+            if (typeof window.UnifiedCoffeePriceSync.init === 'function') {
+                console.log('初始化统一数据同步系统...');
+                try {
+                    const initResult = window.UnifiedCoffeePriceSync.init();
+                    console.log('统一数据同步系统初始化结果:', initResult);
+                    
+                    // 验证数据系统是否正常工作
+                    if (window.UnifiedCoffeePriceSync.getPriceData) {
+                const testData = window.UnifiedCoffeePriceSync.getPriceData();
+                console.log('统一数据同步系统工作正常，数据记录数:', testData ? 1 : 0);
+            }
+                } catch (initError) {
+                    console.error('初始化统一数据同步系统时出错:', initError);
+                }
+            } else {
+                console.error('UnifiedCoffeePriceSync.init函数不可用！');
+            }
+            
+            // 确保同步系统已初始化
+            if (window.UnifiedCoffeePriceSync && typeof window.UnifiedCoffeePriceSync.setupListeners === 'function') {
+                console.log('初始化UnifiedCoffeePriceSync系统...');
+                try {
+                    window.UnifiedCoffeePriceSync.setupListeners();
+                    console.log('UnifiedCoffeePriceSync初始化完成');
+                } catch (syncError) {
+                    console.warn('初始化UnifiedCoffeePriceSync时出错:', syncError);
+                }
+            } else {
+                console.warn('UnifiedCoffeePriceSync系统不可用，将使用直接保存方式');
+            }
+            
+            // 将save函数暴露给全局作用域
+            if (window.UnifiedCoffeePriceSync && window.UnifiedCoffeePriceSync.savePriceData) {
+                window.savePriceData = window.UnifiedCoffeePriceSync.savePriceData;
+                console.log('save函数已暴露到全局作用域');
+            } else {
+                console.error('save函数不可用！');
+            }
+            
+            console.log('=== price.html 初始化完成 ===');
+        }
+        
+        // 添加时间戳参数避免缓存
+        function addCacheBuster(url) {
+            const separator = url.includes('?') ? '&' : '?';
+            return url + separator + '_t=' + Date.now();
+        }
+        
+        // 页面加载完成后初始化
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => {
+                setTimeout(initializePriceSystem, 100);
+                setupFormHandler();
+            });
+        } else {
+            // DOM已加载，立即初始化
+            setTimeout(initializePriceSystem, 100);
+            setTimeout(setupFormHandler, 200);
+        }
+        
+        // 设置表单处理函数
+        function setupFormHandler() {
+            console.log('=== 设置表单处理函数 ===');
+            const priceForm = document.getElementById('price-form');
+            const notification = document.getElementById('notification');
+            // 使用本地时间而不是UTC时间来获取当前日期
+            const now = new Date();
+            const currentDate = now.getFullYear() + '-' + 
+                              String(now.getMonth() + 1).padStart(2, '0') + '-' + 
+                              String(now.getDate()).padStart(2, '0'); // 获取当前日期，格式为YYYY-MM-DD
+            
+            // 验证表单元素是否存在
+            if (!priceForm) {
+                console.error('找不到price-form表单元素！');
+                // 延迟重试
+                setTimeout(setupFormHandler, 200);
+                return;
+            }
+            console.log('表单元素已找到，准备绑定提交事件');
+            
+            if (!notification) {
+                console.error('找不到notification元素！');
+                return;
+            }
+            
+            // 显示通知的函数
+            function showNotification(message, isSuccess = true) {
+                try {
+                    notification.textContent = message;
+                    notification.className = `notification ${isSuccess ? 'success' : 'error'} show`;
+                    
+                    setTimeout(() => {
+                        notification.className = 'notification';
+                    }, 3000);
+                } catch (e) {
+                    console.error('显示通知失败:', e);
+                }
+            }
+
+            // 表单提交事件处理
+            priceForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            
+            console.log('=== 表单提交开始 ===');
+            
+            const coffeePrice = document.getElementById('coffee-price').value;
+            
+            // 验证输入 - 将字符串转换为数字后再进行验证
+            const priceValue = parseFloat(coffeePrice);
+            if (!coffeePrice || isNaN(priceValue) || priceValue <= 0) {
+                showNotification('请输入有效的价格', false);
+                return;
+            }
+
+            const newPriceData = {
+                date: currentDate,
+                price: parseFloat(coffeePrice).toFixed(2), // 使用浮点数并保留两位小数
+                timestamp: Date.now() // 添加时间戳，确保数据同步时能正确比较
+            }
+
+            console.log('提交的价格数据:', newPriceData);
+            console.log('日期格式验证:', /^\d{4}-\d{2}-\d{2}$/.test(newPriceData.date));
+            console.log('价格格式验证:', /^\d+(\.\d{1,2})?$/.test(newPriceData.price));
+
+            // 构建跳转URL（无论保存是否成功，都使用URL传递数据）
+            let redirectUrl = 'index.html';
+            try {
+                const dataStr = JSON.stringify(newPriceData);
+                const encoded = encodeURIComponent(dataStr);
+                redirectUrl = `index.html?price_data=${encoded}`;
+                console.log('构建跳转URL（带数据），长度:', redirectUrl.length);
+            } catch (e) {
+                console.error('构建URL参数失败:', e);
+                redirectUrl = 'index.html';
+            }
+
+            // 使用统一数据系统保存数据
+            const saveData = async () => {
+                try {
+                    console.log('开始保存价格数据...');
+                    console.log('UnifiedCoffeePriceSync available:', !!window.UnifiedCoffeePriceSync);
+                    
+                    let saveResult = false;
+                    
+                    // 使用新的统一同步系统保存数据
+                    if (window.UnifiedCoffeePriceSync && typeof window.UnifiedCoffeePriceSync.savePriceData === 'function') {
+                        console.log('使用UnifiedCoffeePriceSync.savePriceData保存数据...');
+                        
+                        // 检查localStorage是否可用
+                        if (typeof localStorage === 'undefined') {
+                            console.error('localStorage不可用！');
+                            showNotification('浏览器不支持数据存储，请使用其他浏览器', false);
+                            return;
+                        }
+                        
+                        // 尝试保存
+                        try {
+                            saveResult = window.UnifiedCoffeePriceSync.savePriceData(newPriceData);
+                            console.log('保存结果:', saveResult);
+                        } catch (saveError) {
+                            console.error('保存时抛出异常:', saveError);
+                            console.error('异常详情:', saveError.message, saveError.stack);
+                            saveResult = false;
+                        }
+                        
+                        // 如果保存失败，尝试从localStorage读取验证
+                        if (!saveResult) {
+                            console.error('保存失败，检查localStorage...');
+                            try {
+                                const stored = localStorage.getItem('coffee_price_data_v3');
+                                console.log('localStorage中的数据:', stored ? '存在' : '不存在');
+                                if (stored) {
+                                    const parsed = JSON.parse(stored);
+                                    console.log('localStorage数据内容:', {
+                                        version: parsed.version,
+                                        dataCount: parsed.data ? parsed.data.length : 0
+                                    });
+                                }
+                            } catch (e) {
+                                console.error('读取localStorage失败:', e);
+                            }
+                        }
+                    } else {
+                        console.error('统一数据保存函数不可用');
+                        throw new Error('统一数据保存函数不可用');
+                    }
+                    
+                    // 无论保存是否成功，都执行以下操作
+                    console.log('保存操作完成，saveResult:', saveResult);
+                    
+                    if (saveResult) {
+                        console.log('价格数据保存成功，开始多方式同步...');
+                        
+                        // 使用统一同步系统进行多方式同步
+                        if (window.UnifiedCoffeePriceSync && typeof window.UnifiedCoffeePriceSync.syncData === 'function') {
+                            try {
+                                const syncResults = window.UnifiedCoffeePriceSync.syncData(newPriceData);
+                                console.log('多方式同步结果:', syncResults);
+                            } catch (syncError) {
+                                console.error('同步失败:', syncError);
+                            }
+                        }
+                        
+                        // 触发全局数据更新通知
+                        if (typeof window !== 'undefined') {
+                            try {
+                                window.dispatchEvent(new CustomEvent('global-data-updated', {
+                                    detail: {
+                                        timestamp: Date.now(),
+                                        syncId: 'local_save_' + Date.now()
+                                    }
+                                }));
+                                
+                                window.dispatchEvent(new CustomEvent('price-data-saved', {
+                                    detail: {
+                                        data: newPriceData,
+                                        timestamp: Date.now()
+                                    }
+                                }));
+                            } catch (eventError) {
+                                console.error('触发事件失败:', eventError);
+                            }
+                        }
+                        
+                        // 显示成功通知
+                        showNotification('价格更新成功！\n正在跳转到首页...', true);
+                    } else {
+                        console.warn('价格数据保存失败，但将通过URL参数传递数据');
+                        showNotification('数据将通过URL传递\n正在跳转到首页...', true);
+                    }
+                    
+                    // 清空表单输入框
+                    try {
+                        document.getElementById('coffee-price').value = '';
+                    } catch (e) {
+                        console.error('清空表单失败:', e);
+                    }
+                    
+                    // 无论保存是否成功，都强制刷新index页面的数据
+                    // 通过URL参数确保index页面能获取最新数据
+                    redirectUrl += '&force_refresh=true&timestamp=' + Date.now();
+                    
+                    console.log('准备跳转到:', redirectUrl);
+                    
+                    // 无论保存是否成功，都执行跳转（使用URL参数传递数据）
+                    setTimeout(() => {
+                        console.log('执行跳转，目标URL:', redirectUrl);
+                        try {
+                            window.location.href = redirectUrl;
+                        } catch (jumpError) {
+                            console.error('跳转失败:', jumpError);
+                            // 如果跳转失败，尝试使用location.replace
+                            try {
+                                window.location.replace(redirectUrl);
+                            } catch (replaceError) {
+                                console.error('replace也失败:', replaceError);
+                                showNotification('跳转失败，请手动访问首页', false);
+                            }
+                        }
+                    }, saveResult ? 1500 : 2000);
+                } catch (error) {
+                    console.error('保存价格数据时出错:', error);
+                    console.error('错误堆栈:', error.stack);
+                    showNotification('数据保存失败，请刷新页面后重试', false);
+                    
+                    // 即使出错，也尝试跳转（使用URL参数）
+                    try {
+                        const dataStr = JSON.stringify(newPriceData);
+                        const encoded = encodeURIComponent(dataStr);
+                        const redirectUrl = `index.html?price_data=${encoded}`;
+                        console.log('发生错误，但尝试强制跳转...');
+                        setTimeout(() => {
+                            window.location.href = redirectUrl;
+                        }, 1000);
+                    } catch (finalError) {
+                        console.error('最终跳转也失败:', finalError);
+                    }
+                }
+            };
+            
+            // 执行保存操作
+            console.log('开始执行saveData函数...');
+            saveData().catch(err => {
+                console.error('saveData Promise rejected:', err);
+            });
+            });
+            
+            console.log('表单提交事件已绑定');
+        }
+        </script>
+        
+        <!-- 增强页面加载时的数据同步 - 与统一数据系统集成 -->
+        <script type="module">
+            document.addEventListener('DOMContentLoaded', () => {
+                console.log('price.html - 初始化数据同步系统');
+                
+                // 初始化统一价格同步系统
+                if (window.UnifiedCoffeePriceSync) {
+                    console.log('price.html - 统一价格同步系统已加载');
+                }
+                
+                // 为了兼容性保留旧系统初始化
+                if (window.UnifiedCoffeePriceSync && typeof window.UnifiedCoffeePriceSync.setupListeners === 'function') {
+                    try {
+                        window.UnifiedCoffeePriceSync.setupListeners();
+                        console.log('price.html - UnifiedCoffeePriceSync 初始化成功');
+                    } catch (error) {
+                        console.warn('price.html - UnifiedCoffeePriceSync 初始化失败:', error);
+                    }
+                }
+                
+                // 页面加载时检查URL参数中的数据
+                if (window.UnifiedCoffeePriceSync && typeof window.UnifiedCoffeePriceSync.readFromURL === 'function') {
+                    const urlData = window.UnifiedCoffeePriceSync.readFromURL();
+                    if (urlData) {
+                        console.log('从URL参数读取到数据:', urlData);
+                        // 保存URL数据
+                        if (window.UnifiedCoffeePriceSync.savePriceData(urlData)) {
+                            console.log('URL数据保存成功');
+                        }
+                    }
+                }
+                
+                // 为了兼容性保留旧系统
+                if (window.UnifiedCoffeePriceSync && typeof window.UnifiedCoffeePriceSync.readFromURL === 'function') {
+                    const urlData = window.UnifiedCoffeePriceSync.readFromURL();
+                    if (urlData) {
+                        console.log('从URL参数读取到数据:', urlData);
+                    }
+                } else if (window.readFromURL) {
+                    const urlData = window.readFromURL();
+                    if (urlData) {
+                        console.log('从URL参数读取到数据:', urlData);
+                    }
+                }
+                
+                // 检查全局共享数据源
+                if (window.sharedPriceData) {
+                    console.log('检测到全局共享数据源已就绪');
+                    // 立即尝试同步
+                    if (window.UnifiedCoffeePriceSync && typeof window.UnifiedCoffeePriceSync.syncData === 'function') {
+                        window.UnifiedCoffeePriceSync.syncData();
+                    } else if (typeof window.syncFromSharedData === 'function') {
+                        window.syncFromSharedData();
+                    }
+                }
+                
+                // 监听全局数据更新事件
+                window.addEventListener('global-data-updated', function(event) {
+                    console.log('接收到全局数据更新通知:', event.detail);
+                    // 尝试从全局共享数据源同步
+                    if (window.UnifiedCoffeePriceSync && typeof window.UnifiedCoffeePriceSync.syncData === 'function') {
+                        window.UnifiedCoffeePriceSync.syncData();
+                    } else if (typeof window.syncFromSharedData === 'function') {
+                        window.syncFromSharedData();
+                    }
+                });
+                
+                // 监听统一咖啡价格数据更新事件
+                window.addEventListener('unifiedCoffeePriceDataUpdated', function(event) {
+                    console.log('接收到统一咖啡价格数据更新通知:', event.detail);
+                    // 尝试从全局共享数据源同步
+                    if (window.UnifiedCoffeePriceSync && typeof window.UnifiedCoffeePriceSync.syncData === 'function') {
+                        window.UnifiedCoffeePriceSync.syncData();
+                    }
+                });
+                
+                // 输出同步状态信息
+                if (window.UnifiedCoffeePriceSync && typeof window.UnifiedCoffeePriceSync.getSyncStatus === 'function') {
+                    const syncStatus = window.UnifiedCoffeePriceSync.getSyncStatus();
+                    console.log('当前数据同步状态:', syncStatus);
+                }
+            });
+        </script>
+        
+
+
+
+</body>
+</html>

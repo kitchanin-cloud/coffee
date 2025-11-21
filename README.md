@@ -12,14 +12,10 @@ coffee-main/
 ├── history.html         # 历史数据页面（原始版本）
 ├── history_fixed.html   # 修复后的历史数据页面
 ├── solution.html        # 完整解决方案页面
-├── test_price_data_clean.js  # 核心数据管理模块
-├── diagnostic_test.html # 诊断测试页面
-├── enhanced_test.html   # 增强测试页面
-├── full_test.html       # 完整功能测试页面
-├── ls_check.html        # LocalStorage检查页面
-├── data_test.html       # 数据测试页面
-├── debug_localstorage.html  # LocalStorage调试页面
-├── check_storage.html   # 存储检查页面
+├── price.html           # 价格管理页面
+├── js/                  # JavaScript模块目录
+│   ├── unified_sync_system.js  # 统一数据同步系统
+├── price_sync_enhanced.js      # 增强版价格数据同步系统
 ├── images/              # 图片资源目录
 │   ├── flagThailand.png
 │   ├── flagChina.png
@@ -29,12 +25,12 @@ coffee-main/
 
 ## 核心功能
 
-### 1. 数据管理 (test_price_data_clean.js)
-- `CoffeePriceData.initialize()` - 初始化系统
-- `CoffeePriceData.getData()` - 获取价格数据
-- `CoffeePriceData.updateData(newData)` - 更新价格数据
-- `CoffeePriceData.getDataStatus()` - 获取数据状态信息
-- 数据持久化存储在 localStorage 中 (key: `coffee_price_data_v3`)
+### 1. 统一数据同步系统 (unified_sync_system.js)
+- `UnifiedCoffeePriceSync.init()` - 初始化系统
+- `UnifiedCoffeePriceSync.savePriceData(data)` - 保存价格数据
+- `UnifiedCoffeePriceSync.getPriceData()` - 获取价格数据
+- `UnifiedCoffeePriceSync.clearAllData()` - 清除所有数据
+- 数据持久化存储在 localStorage 中 (key: `coffee_price_data_v4`)
 
 ### 2. 页面功能
 
@@ -48,30 +44,24 @@ coffee-main/
 #### history_fixed.html
 修复后的历史数据页面，解决了原始版本中数据不显示的问题。
 
-#### 其他测试页面
-- `diagnostic_test.html` - 系统诊断测试
-- `enhanced_test.html` - 增强功能测试
-- `full_test.html` - 完整功能测试
-- `ls_check.html` - LocalStorage检查
-- `data_test.html` - 数据测试
-- `debug_localstorage.html` - LocalStorage调试
-- `check_storage.html` - 存储检查
+#### price.html
+价格管理页面，提供了增强的价格数据输入和管理功能。
 
 ## 解决的关键问题
 
 ### 1. history.html 页面不显示最新数据
 **问题原因：**
 - `getPriceData()` 函数虽然实现了多种数据获取方式，但在实际使用中可能因为某些条件未满足而未能正确获取数据
-- 数据获取优先级：window.CoffeePriceData.getData() → localStorage → basePriceData
+- 数据获取优先级：window.UnifiedCoffeePriceSync.getPriceData() → localStorage → basePriceData
 - 同步机制可能未正确触发
 
 **解决方案：**
 - 在 `history_fixed.html` 和 `solution.html` 中优化了数据获取逻辑
-- 确保正确初始化 CoffeePriceData 系统
+- 确保正确初始化 UnifiedCoffeePriceSync 系统
 - 改进了错误处理和数据回退机制
 
 ### 2. 数据管理改进
-- 提供了统一的 `CoffeePriceData` API 来管理价格数据
+- 提供了统一的 `UnifiedCoffeePriceSync` API 来管理价格数据
 - 实现了数据验证、排序和限制（最多90条记录）
 - 添加了备份和清理功能
 
@@ -111,6 +101,5 @@ coffee-main/
 如果遇到数据显示问题，请按以下步骤检查：
 
 1. 检查浏览器控制台是否有错误信息
-2. 使用 `ls_check.html` 页面检查 localStorage 中是否存在数据
-3. 使用 `diagnostic_test.html` 页面进行系统诊断
-4. 确保 `test_price_data_clean.js` 文件正确加载
+2. 确保 `unified_sync_system.js` 文件正确加载
+3. 检查 localStorage 中是否存在数据 (key: `coffee_price_data_v4`)
