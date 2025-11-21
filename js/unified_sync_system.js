@@ -5,7 +5,7 @@
 const UnifiedCoffeePriceSync = (function() {
     // 使用全新的存储键名，避免与旧数据冲突
     const STORAGE_KEY = 'coffee_price_data_v5_unified';
-    const CHANNEL_NAME = 'coffee_price_sync_v5_channel';
+    const CHANNEL_NAME = 'coffee_price_sync';  // 与price_sync_enhanced.js保持一致
     const DEVICE_ID_KEY = 'coffee_device_id_v5';
     
     let broadcastChannel = null;
@@ -64,7 +64,16 @@ const UnifiedCoffeePriceSync = (function() {
                 };
             }
             
+            // 保存统一格式数据
             localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+            
+            // 同时保存增强版兼容格式数据
+            const enhancedFormat = {
+                type: 'price-update',
+                data: payload,
+                timestamp: Date.now()
+            };
+            localStorage.setItem('coffee_price_sync', JSON.stringify(enhancedFormat));
             
             // 广播通知其他设备
             broadcastData(payload);
@@ -80,19 +89,28 @@ const UnifiedCoffeePriceSync = (function() {
     // 获取价格数据
     function getPriceData() {
         try {
-            const dataStr = localStorage.getItem(STORAGE_KEY);
-            const data = dataStr ? JSON.parse(dataStr) : null;
+            // 首先尝试从统一存储键加载
+            let dataStr = localStorage.getItem(STORAGE_KEY);
             
-            // 返回数据时保持一致性
-            if (data) {
-                // 如果需要返回数组格式，可以在这里转换
-                // 但现在我们保持对象格式，因为这是单个价格数据
-                return data;
+            // 如果统一存储键没有数据，尝试从增强版存储键加载
+            if (!dataStr) {
+                dataStr = localStorage.getItem('coffee_price_sync');
             }
             
+            if (dataStr) {
+                const parsedData = JSON.parse(dataStr);
+                // 处理增强版格式的数据
+                let data = parsedData;
+                if (parsedData && parsedData.data) {
+                    data = parsedData.data;
+                }
+                
+                console.log('从localStorage加载价格数据:', data);
+                return data;
+            }
             return null;
         } catch (error) {
-            console.error('获取价格数据失败:', error);
+            console.error('加载价格数据失败:', error);
             return null;
         }
     }
@@ -101,11 +119,28 @@ const UnifiedCoffeePriceSync = (function() {
     function broadcastData(data) {
         if (broadcastChannel) {
             try {
-                broadcastChannel.postMessage({
+                // 发送统一格式消息
+                const unifiedMessage = {
                     type: 'PRICE_DATA_UPDATE',
+                    senderId: getDeviceId(),
                     data: data,
-                    senderId: getDeviceId()
-                });
+                    timestamp: Date.now()
+                };
+                
+                // 发送增强版兼容格式消息
+                const enhancedMessage = {
+                    type: 'price-update',
+                    senderId: getDeviceId(),
+                    data: data,
+                    timestamp: Date.now()
+                };
+                
+                broadcastChannel.postMessage(unifiedMessage);
+                console.log('广播统一格式数据:', unifiedMessage);
+                
+                // 同时发送增强版兼容格式
+                broadcastChannel.postMessage(enhancedMessage);
+                console.log('广播增强版兼容格式数据:', enhancedMessage);
             } catch (error) {
                 console.warn('广播数据失败:', error);
             }
@@ -116,7 +151,7 @@ const UnifiedCoffeePriceSync = (function() {
     function handleBroadcastMessage(event) {
         const message = event.data;
         
-        if (message.type === 'PRICE_DATA_UPDATE') {
+        if (message.type === 'PRICE_DATA_UPDATE' || message.type === 'price-update') {
             // 忽略自己发送的消息
             if (message.senderId !== getDeviceId()) {
                 // 触发自定义事件通知页面数据已更新
@@ -130,16 +165,23 @@ const UnifiedCoffeePriceSync = (function() {
     
     // 处理存储变化事件
     function handleStorageChange(event) {
-        if (event.key === STORAGE_KEY) {
+        // 检查统一存储键或增强版存储键
+        if (event.key === STORAGE_KEY || event.key === 'coffee_price_sync') {
             try {
                 const data = event.newValue ? JSON.parse(event.newValue) : null;
+                // 提取实际数据（处理增强版同步系统的包装格式）
+                let actualData = data;
+                if (data && data.data) {
+                    actualData = data.data;
+                }
+                
                 // 忽略自己设备的更新
-                if (data && data.deviceId !== getDeviceId()) {
+                if (actualData && actualData.deviceId !== getDeviceId()) {
                     // 触发自定义事件通知页面数据已更新
                     window.dispatchEvent(new CustomEvent('unifiedCoffeePriceDataUpdated', {
-                        detail: data
+                        detail: actualData
                     }));
-                    console.log('检测到存储数据变化:', data);
+                    console.log('检测到存储数据变化:', actualData);
                 }
             } catch (error) {
                 console.error('处理存储变化失败:', error);
