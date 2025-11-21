@@ -5,7 +5,7 @@
 const UnifiedCoffeePriceSync = (function() {
     // 使用全新的存储键名，避免与旧数据冲突
     const STORAGE_KEY = 'coffee_price_data_v5_unified';
-    const CHANNEL_NAME = 'coffee_price_sync';  // 用于跨标签页/窗口数据同步
+    const CHANNEL_NAME = 'coffee_price_sync_v2';  // 用于跨标签页/窗口数据同步（升级版本避免冲突）
     const DEVICE_ID_KEY = 'coffee_device_id_v5';
     
     let broadcastChannel = null;
@@ -20,9 +20,12 @@ const UnifiedCoffeePriceSync = (function() {
             try {
                 broadcastChannel = new BroadcastChannel(CHANNEL_NAME);
                 broadcastChannel.onmessage = handleBroadcastMessage;
+                console.log('BroadcastChannel 初始化成功，频道名称:', CHANNEL_NAME);
             } catch (error) {
                 console.warn('BroadcastChannel 初始化失败:', error);
             }
+        } else {
+            console.warn('当前环境不支持 BroadcastChannel');
         }
         
         // 监听存储变化事件
@@ -113,6 +116,8 @@ const UnifiedCoffeePriceSync = (function() {
             } catch (error) {
                 console.warn('广播数据失败:', error);
             }
+        } else {
+            console.warn('BroadcastChannel 未初始化，无法广播数据');
         }
     }
     
@@ -121,12 +126,17 @@ const UnifiedCoffeePriceSync = (function() {
     function handleBroadcastMessage(event) {
         const message = event.data;
         
-        if (message.type === 'PRICE_DATA_UPDATE' || message.type === 'price-update') {
+        // 添加更全面的消息类型检查
+        if (message && (message.type === 'PRICE_DATA_UPDATE' || message.type === 'price-update')) {
+            console.log('接收到广播消息:', message);
+            
             // 触发自定义事件通知页面数据已更新（移除了设备ID检查）
             window.dispatchEvent(new CustomEvent('unifiedCoffeePriceDataUpdated', {
                 detail: message.data
             }));
-            console.log('接收到数据更新:', message.data);
+            console.log('已触发 unifiedCoffeePriceDataUpdated 事件');
+        } else {
+            console.log('收到未知类型的广播消息:', message);
         }
     }
     
