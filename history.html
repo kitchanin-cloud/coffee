@@ -531,18 +531,7 @@
             window.addEventListener('unifiedCoffeePriceDataUpdated', handlePriceUpdate);
 
             // 基础价格历史数据（作为回退数据）
-            const basePriceData = [
-                { date: '2025-08-30', price: '58901' },
-                { date: '2025-08-29', price: '57632' },
-                { date: '2025-08-28', price: '59231' },
-                { date: '2025-08-27', price: '60123' },
-                { date: '2025-08-26', price: '59876' },
-                { date: '2025-08-25', price: '59321' },
-                { date: '2025-08-24', price: '61987' },
-                { date: '2025-08-23', price: '57890' },
-                { date: '2025-08-22', price: '62543' },
-                { date: '2025-08-21', price: '58432' }
-            ];
+            const basePriceData = [];
 
             // 获取价格数据 - 使用统一数据管理系统
             function getPriceData() {
