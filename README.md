@@ -29,7 +29,8 @@ coffee-main/
 - `UnifiedCoffeePriceSync.savePriceData(data)` - 保存价格数据
 - `UnifiedCoffeePriceSync.getPriceData()` - 获取价格数据
 - `UnifiedCoffeePriceSync.clearAllData()` - 清除所有数据
-- 数据持久化存储在 localStorage 中 (key: `coffee_price_data_v4`)
+- 数据持久化存储在 localStorage 中 (key: `coffee_price_data_v5_unified`)
+- 跨标签页/窗口数据同步使用 BroadcastChannel (channel: `coffee_price_sync_v2`)
 
 ### 2. 页面功能
 
@@ -59,7 +60,19 @@ coffee-main/
 - 确保正确初始化 UnifiedCoffeePriceSync 系统
 - 改进了错误处理和数据回退机制
 
-### 2. 数据管理改进
+### 2. 跨设备/标签页数据同步问题
+**问题原因：**
+- BroadcastChannel 频道名称冲突导致同步失败
+- localStorage 键名冲突影响数据一致性
+- 缺少适当的错误处理和消息验证机制
+
+**解决方案：**
+- 升级 BroadcastChannel 频道名称为 `coffee_price_sync_v2` 避免冲突
+- 更新 localStorage 键名为 `coffee_price_data_v5_unified` 确保唯一性
+- 增强消息处理逻辑和错误处理机制
+- 实现完整的跨设备和跨标签页数据同步功能
+
+### 3. 数据管理改进
 - 提供了统一的 `UnifiedCoffeePriceSync` API 来管理价格数据
 - 实现了数据验证、排序和限制（最多90条记录）
 - 添加了备份和清理功能
