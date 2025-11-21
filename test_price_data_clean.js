@@ -215,17 +215,26 @@ function savePriceData(newPriceData) {
       item && item.date === newPriceData.date
     );
     
-    const now = Date.now();
+    // 使用传入的时间戳，如果没有则使用当前时间
+    const now = newPriceData.timestamp || Date.now();
     const newDataWithTimestamp = {
       ...newPriceData,
       timestamp: now
     };
     
     if (existingIndex >= 0) {
-      // 如果已存在同一天的数据，更新它（保留最新的）
-      console.log(`更新${newPriceData.date}的数据，索引: ${existingIndex}`);
-      priceDataStore.data[existingIndex] = newDataWithTimestamp;
-      console.log(`数据已更新，当前数据总数: ${priceDataStore.data.length}`);
+      // 如果已存在同一天的数据，比较时间戳，只更新更新的数据
+      const existingItem = priceDataStore.data[existingIndex];
+      const existingTimestamp = existingItem.timestamp || 0;
+      
+      if (now > existingTimestamp) {
+        console.log(`更新${newPriceData.date}的数据（新数据时间戳更新），索引: ${existingIndex}`);
+        priceDataStore.data[existingIndex] = newDataWithTimestamp;
+        console.log(`数据已更新，当前数据总数: ${priceDataStore.data.length}`);
+      } else {
+        console.log(`保留${newPriceData.date}的现有数据（现有数据时间戳更新）`);
+        // 不更新，保留现有数据
+      }
     } else {
       // 如果不存在，添加新数据
       console.log(`添加新数据: ${newPriceData.date}`);

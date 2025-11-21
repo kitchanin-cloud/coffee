@@ -432,7 +432,8 @@
 
             const newPriceData = {
                 date: currentDate,
-                price: parseFloat(coffeePrice).toFixed(2) // 使用浮点数并保留两位小数
+                price: parseFloat(coffeePrice).toFixed(2), // 使用浮点数并保留两位小数
+                timestamp: Date.now() // 添加时间戳，确保数据同步时能正确比较
             }
 
             console.log('提交的价格数据:', newPriceData);
