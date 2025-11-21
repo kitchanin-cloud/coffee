@@ -336,16 +336,16 @@
             }
             
             // 确保同步系统已初始化
-            if (window.PriceSyncAPI && typeof window.PriceSyncAPI.init === 'function') {
-                console.log('初始化PriceSyncAPI系统...');
+            if (window.UnifiedCoffeePriceSync && typeof window.UnifiedCoffeePriceSync.setupListeners === 'function') {
+                console.log('初始化UnifiedCoffeePriceSync系统...');
                 try {
-                    window.PriceSyncAPI.init();
-                    console.log('PriceSyncAPI初始化完成');
+                    window.UnifiedCoffeePriceSync.setupListeners();
+                    console.log('UnifiedCoffeePriceSync初始化完成');
                 } catch (syncError) {
-                    console.warn('初始化PriceSyncAPI时出错:', syncError);
+                    console.warn('初始化UnifiedCoffeePriceSync时出错:', syncError);
                 }
             } else {
-                console.warn('PriceSyncAPI系统不可用，将使用直接保存方式');
+                console.warn('UnifiedCoffeePriceSync系统不可用，将使用直接保存方式');
             }
             
             // 将save函数暴露给全局作用域
@@ -486,7 +486,7 @@
                         if (!saveResult) {
                             console.error('保存失败，检查localStorage...');
                             try {
-                                const stored = localStorage.getItem('coffee_prices_unified');
+                                const stored = localStorage.getItem('coffee_price_data_v3');
                                 console.log('localStorage中的数据:', stored ? '存在' : '不存在');
                                 if (stored) {
                                     const parsed = JSON.parse(stored);
@@ -619,12 +619,12 @@
                 }
                 
                 // 为了兼容性保留旧系统初始化
-                if (window.PriceSyncAPI && typeof window.PriceSyncAPI.init === 'function') {
+                if (window.UnifiedCoffeePriceSync && typeof window.UnifiedCoffeePriceSync.setupListeners === 'function') {
                     try {
-                        window.PriceSyncAPI.init();
-                        console.log('price.html - PriceSyncAPI 初始化成功');
+                        window.UnifiedCoffeePriceSync.setupListeners();
+                        console.log('price.html - UnifiedCoffeePriceSync 初始化成功');
                     } catch (error) {
-                        console.warn('price.html - PriceSyncAPI 初始化失败:', error);
+                        console.warn('price.html - UnifiedCoffeePriceSync 初始化失败:', error);
                     }
                 }
                 
@@ -641,15 +641,15 @@
                 }
                 
                 // 为了兼容性保留旧系统
-                if (window.PriceSyncAPI && typeof window.PriceSyncAPI.parseDataFromUrlHash === 'function') {
-                    const hasSyncedFromHash = window.PriceSyncAPI.parseDataFromUrlHash();
-                    if (hasSyncedFromHash) {
-                        console.log('成功从URL哈希同步数据');
+                if (window.UnifiedCoffeePriceSync && typeof window.UnifiedCoffeePriceSync.readFromURL === 'function') {
+                    const urlData = window.UnifiedCoffeePriceSync.readFromURL();
+                    if (urlData) {
+                        console.log('从URL参数读取到数据:', urlData);
                     }
-                } else if (window.parseDataFromUrlHash) {
-                    const hasSyncedFromHash = window.parseDataFromUrlHash();
-                    if (hasSyncedFromHash) {
-                        console.log('成功从URL哈希同步数据');
+                } else if (window.readFromURL) {
+                    const urlData = window.readFromURL();
+                    if (urlData) {
+                        console.log('从URL参数读取到数据:', urlData);
                     }
                 }
                 
@@ -657,8 +657,8 @@
                 if (window.sharedPriceData) {
                     console.log('检测到全局共享数据源已就绪');
                     // 立即尝试同步
-                    if (window.PriceSyncAPI && typeof window.PriceSyncAPI.syncFromSharedData === 'function') {
-                        window.PriceSyncAPI.syncFromSharedData();
+                    if (window.UnifiedCoffeePriceSync && typeof window.UnifiedCoffeePriceSync.syncData === 'function') {
+                        window.UnifiedCoffeePriceSync.syncData();
                     } else if (typeof window.syncFromSharedData === 'function') {
                         window.syncFromSharedData();
                     }
@@ -668,16 +668,16 @@
                 window.addEventListener('global-data-updated', function(event) {
                     console.log('接收到全局数据更新通知:', event.detail);
                     // 尝试从全局共享数据源同步
-                    if (window.PriceSyncAPI && typeof window.PriceSyncAPI.syncFromSharedData === 'function') {
-                        window.PriceSyncAPI.syncFromSharedData();
+                    if (window.UnifiedCoffeePriceSync && typeof window.UnifiedCoffeePriceSync.syncData === 'function') {
+                        window.UnifiedCoffeePriceSync.syncData();
                     } else if (typeof window.syncFromSharedData === 'function') {
                         window.syncFromSharedData();
                     }
                 });
                 
                 // 输出同步状态信息
-                if (window.PriceSyncAPI && typeof window.PriceSyncAPI.getSyncStatus === 'function') {
-                    const syncStatus = window.PriceSyncAPI.getSyncStatus();
+                if (window.UnifiedCoffeePriceSync && typeof window.UnifiedCoffeePriceSync.getSyncStatus === 'function') {
+                    const syncStatus = window.UnifiedCoffeePriceSync.getSyncStatus();
                     console.log('当前数据同步状态:', syncStatus);
                 }
             });

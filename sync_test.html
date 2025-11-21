@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>多设备同步测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .device {
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 20px 0;
+            background-color: #f9f9f9;
+        }
+        .device h2 {
+            margin-top: 0;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .status {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+            background-color: #e9e9e9;
+        }
+        input {
+            padding: 8px;
+            margin: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h1>多设备同步测试</h1>
+    
+    <div class="device">
+        <h2>设备 1</h2>
+        <input type="text" id="priceInput1" placeholder="输入价格">
+        <button onclick="updatePrice(1)">更新价格</button>
+        <button onclick="syncNow(1)">立即同步</button>
+        <div class="status" id="status1">状态: 等待操作</div>
+        <div>当前价格: <span id="currentPrice1">-</span></div>
+    </div>
+    
+    <div class="device">
+        <h2>设备 2</h2>
+        <input type="text" id="priceInput2" placeholder="输入价格">
+        <button onclick="updatePrice(2)">更新价格</button>
+        <button onclick="syncNow(2)">立即同步</button>
+        <div class="status" id="status2">状态: 等待操作</div>
+        <div>当前价格: <span id="currentPrice2">-</span></div>
+    </div>
+    
+    <button onclick="clearData()">清除所有数据</button>
+    
+    <!-- 引入统一同步系统 -->
+    <script src="./js/unified_sync_system.js"></script>
+    
+    <script>
+        // 初始化同步系统
+        window.UnifiedCoffeePriceSync.setupListeners();
+        
+        // 更新价格函数
+        function updatePrice(deviceId) {
+            const input = document.getElementById(`priceInput${deviceId}`);
+            const price = parseFloat(input.value);
+            
+            if (isNaN(price)) {
+                updateStatus(deviceId, "错误: 请输入有效数字");
+                return;
+            }
+            
+            // 保存价格数据
+            window.UnifiedCoffeePriceSync.savePriceData({
+                price: price,
+                timestamp: Date.now(),
+                device: `Device ${deviceId}`
+            });
+            
+            updateStatus(deviceId, `已更新价格为: ${price}`);
+            refreshDisplay();
+        }
+        
+        // 立即同步函数
+        function syncNow(deviceId) {
+            try {
+                window.UnifiedCoffeePriceSync.syncData();
+                updateStatus(deviceId, "同步完成");
+                refreshDisplay();
+            } catch (error) {
+                updateStatus(deviceId, `同步错误: ${error.message}`);
+            }
+        }
+        
+        // 清除数据函数
+        function clearData() {
+            localStorage.removeItem('coffee_price_data_v3');
+            updateStatus(1, "数据已清除");
+            updateStatus(2, "数据已清除");
+            refreshDisplay();
+        }
+        
+        // 更新状态显示
+        function updateStatus(deviceId, message) {
+            document.getElementById(`status${deviceId}`).textContent = `状态: ${message}`;
+        }
+        
+        // 刷新显示
+        function refreshDisplay() {
+            const data = window.UnifiedCoffeePriceSync.getPriceData();
+            if (data && data.price) {
+                document.getElementById('currentPrice1').textContent = data.price;
+                document.getElementById('currentPrice2').textContent = data.price;
+            } else {
+                document.getElementById('currentPrice1').textContent = '-';
+                document.getElementById('currentPrice2').textContent = '-';
+            }
+        }
+        
+        // 页面加载时刷新显示
+        window.addEventListener('load', function() {
+            refreshDisplay();
+        });
+        
+        // 监听存储变化事件
+        window.addEventListener('storage', function(e) {
+            if (e.key === 'coffee_price_data_v3') {
+                updateStatus(1, "检测到数据变更，已自动更新");
+                updateStatus(2, "检测到数据变更，已自动更新");
+                refreshDisplay();
+            }
+        });
+    </script>
+</body>
+</html>

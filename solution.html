@@ -679,7 +679,6 @@
                 try {
                     // 清除 localStorage 中的数据
                     localStorage.removeItem('coffee_price_data_v3');
-                    localStorage.removeItem('coffee_prices_v3');
                     
                     // 如果有 CoffeePriceData 系统，也清空其数据
                     if (window.CoffeePriceData && typeof window.CoffeePriceData.clearAll === 'function') {

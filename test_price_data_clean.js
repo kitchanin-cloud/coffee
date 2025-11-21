@@ -12,8 +12,8 @@ let priceDataStore = {
 // 数据配置
 const DATA_CONFIG = {
   DATA_VERSION: '3.0',
-  STORAGE_KEY: 'coffee_prices_v3',
-  BACKUP_KEY: 'coffee_prices_backup_v3',
+  STORAGE_KEY: 'coffee_price_data_v3',
+  BACKUP_KEY: 'coffee_price_data_backup_v3',
   MAX_BACKUP_COUNT: 5,
   AUTO_SAVE_INTERVAL: 1000 // 自动保存间隔（毫秒）
 };

@@ -35,8 +35,8 @@
         if (forceRefresh || hasRecentHashData) {
             console.log('检测到需要强制刷新数据的条件');
             setTimeout(() => {
-                if (window.PriceSyncAPI && typeof window.PriceSyncAPI.sync === 'function') {
-                    window.PriceSyncAPI.sync();
+                if (window.UnifiedCoffeePriceSync && typeof window.UnifiedCoffeePriceSync.syncData === 'function') {
+                    window.UnifiedCoffeePriceSync.syncData();
                 } else if (typeof window.forceRefreshData === 'function') {
                     window.forceRefreshData();
                 } else {
@@ -46,8 +46,8 @@
         }
         
         // 输出同步状态信息
-        if (window.PriceSyncAPI && typeof window.PriceSyncAPI.getStatus === 'function') {
-            const syncStatus = window.PriceSyncAPI.getStatus();
+        if (window.UnifiedCoffeePriceSync && typeof window.UnifiedCoffeePriceSync.getSyncStatus === 'function') {
+            const syncStatus = window.UnifiedCoffeePriceSync.getSyncStatus();
             console.log('当前数据同步状态:', syncStatus);
         }
     });
@@ -565,16 +565,16 @@
                 }
             }
 
-            // 尝试使用PriceSyncAPI的getStatus方法获取同步状态
-            if (window.PriceSyncAPI && typeof window.PriceSyncAPI.getStatus === 'function') {
-                const syncStatus = window.PriceSyncAPI.getStatus();
-                console.log('从PriceSyncAPI获取到同步状态:', syncStatus);
+            // 尝试使用UnifiedCoffeePriceSync的getSyncStatus方法获取同步状态
+            if (window.UnifiedCoffeePriceSync && typeof window.UnifiedCoffeePriceSync.getSyncStatus === 'function') {
+                const syncStatus = window.UnifiedCoffeePriceSync.getSyncStatus();
+                console.log('从UnifiedCoffeePriceSync获取到同步状态:', syncStatus);
             }
             
             // 从localStorage获取数据作为后备
             let storedData = null;
             try {
-                const storedDataStr = localStorage.getItem('coffee_prices_v3');
+                const storedDataStr = localStorage.getItem('coffee_price_data_v3');
                 if (storedDataStr) {
                     const parsedData = JSON.parse(storedDataStr);
                     storedData = Array.isArray(parsedData.data) ? parsedData.data : [];
@@ -687,15 +687,15 @@
             function setupEnhancedSync() {
                 console.log('初始化增强版价格同步机制...');
                 
-                // 如果有PriceSyncAPI，使用它的同步功能
-                if (window.PriceSyncAPI && typeof window.PriceSyncAPI.init === 'function') {
+                // 如果有UnifiedCoffeePriceSync，使用它的同步功能
+                if (window.UnifiedCoffeePriceSync && typeof window.UnifiedCoffeePriceSync.setupListeners === 'function') {
                     // 初始化同步系统
-                    window.PriceSyncAPI.init();
+                    window.UnifiedCoffeePriceSync.setupListeners();
                 }
                 
-                if (window.PriceSyncAPI && typeof window.PriceSyncAPI.sync === 'function') {
+                if (window.UnifiedCoffeePriceSync && typeof window.UnifiedCoffeePriceSync.syncData === 'function') {
                     // 立即执行一次同步
-                    window.PriceSyncAPI.sync();
+                    window.UnifiedCoffeePriceSync.syncData();
                 }
                 
                 // 前5秒内频繁检查，提高移动端提交后的同步速度
@@ -704,8 +704,8 @@
                     checkCount++;
                     console.log(`快速同步检查 #${checkCount}`);
                     
-                    if (window.PriceSyncAPI && typeof window.PriceSyncAPI.sync === 'function') {
-                        window.PriceSyncAPI.sync();
+                    if (window.UnifiedCoffeePriceSync && typeof window.UnifiedCoffeePriceSync.syncData === 'function') {
+                        window.UnifiedCoffeePriceSync.syncData();
                     }
                     
                     if (checkCount >= 10) { // 前5秒每秒检查2次
@@ -726,8 +726,8 @@
                 const syncInterval = isMobile ? 15000 : 5000;
                 
                 const syncTimer = setInterval(() => {
-                    if (window.PriceSyncAPI && typeof window.PriceSyncAPI.sync === 'function') {
-                        window.PriceSyncAPI.sync();
+                    if (window.UnifiedCoffeePriceSync && typeof window.UnifiedCoffeePriceSync.syncData === 'function') {
+                        window.UnifiedCoffeePriceSync.syncData();
                     }
                 }, syncInterval);
                 

@@ -13,7 +13,6 @@
     <script src="./test_price_sync_clean.js"></script>
     <script src="./price_sync_enhanced.js"></script>
     <script src="./js/unified_sync_system.js"></script>
-    <script src="debug_storage.js"></script>
     
     <title>咖啡豆价格 - Coffee Bean Price</title>
     <style>
@@ -393,8 +392,8 @@
             }
             
             // 初始化同步系统
-            if (window.PriceSyncAPI && typeof window.PriceSyncAPI.init === 'function') {
-                    window.PriceSyncAPI.init();
+            if (window.UnifiedCoffeePriceSync && typeof window.UnifiedCoffeePriceSync.setupListeners === 'function') {
+                    window.UnifiedCoffeePriceSync.setupListeners();
                 }
             
             // 检查URL参数，判断是否需要强制刷新
@@ -404,8 +403,8 @@
             // 如果需要强制刷新，立即执行同步
             if (forceRefresh) {
                 console.log('检测到强制刷新参数，执行立即同步');
-                if (window.PriceSyncAPI && typeof window.PriceSyncAPI.sync === 'function') {
-                    window.PriceSyncAPI.sync();
+                if (window.UnifiedCoffeePriceSync && typeof window.UnifiedCoffeePriceSync.syncData === 'function') {
+                    window.UnifiedCoffeePriceSync.syncData();
                 }
             }
             
