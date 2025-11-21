@@ -12,6 +12,7 @@
     <script src="./test_price_data_clean.js"></script>
     <script src="./test_price_sync_clean.js"></script>
     <script src="./price_sync_enhanced.js"></script>
+    <script src="./js/unified_sync_system.js"></script>
     <script src="debug_storage.js"></script>
     
     <title>咖啡豆价格 - Coffee Bean Price</title>
@@ -731,14 +732,14 @@
                 }
             }
             
-            // 增强版同步策略 - 完全基于新的3.0系统
+            // 增强版同步策略 - 使用统一同步系统
             function setupEnhancedSync() {
-                console.log('初始化增强版价格同步机制（v3.0）...');
+                console.log('初始化统一价格同步机制...');
                 
-                // 使用新的同步系统进行同步
-                if (window.PriceSyncAPI && typeof window.PriceSyncAPI.init === 'function') {
-                    console.log('Using PriceSyncAPI v3.0 for synchronization');
-                    window.PriceSyncAPI.init();
+                // 使用统一同步系统进行同步
+                if (window.UnifiedCoffeePriceSync && typeof window.UnifiedCoffeePriceSync.setupListeners === 'function') {
+                    console.log('使用统一同步系统进行同步');
+                    window.UnifiedCoffeePriceSync.setupListeners(refreshPriceData);
                 }
                 
                 // 前5秒内频繁检查，提高移动端提交后的同步速度
@@ -747,10 +748,8 @@
                     checkCount++;
                     console.log(`快速同步检查 #${checkCount}`);
                     
-                    // 使用新的同步系统强制同步
-                    if (window.PriceSyncAPI && typeof window.PriceSyncAPI.sync === 'function') {
-                        window.PriceSyncAPI.sync();
-                    }
+                    // 刷新价格数据
+                    refreshPriceData();
                     
                     if (checkCount >= 10) { // 前5秒每秒检查2次
                         clearInterval(quickCheckTimer);
@@ -768,10 +767,8 @@
             function startRegularSync() {
                 // 设置定期同步数据（每5秒）
                 const syncTimer = setInterval(() => {
-                    // 优先使用新的同步系统
-                    if (window.PriceSyncAPI && typeof window.PriceSyncAPI.sync === 'function') {
-                        window.PriceSyncAPI.sync();
-                    }
+                    // 使用统一同步系统刷新数据
+                    refreshPriceData();
                 }, 5000);
                 
                 // 记录到清理函数
@@ -792,6 +789,7 @@
                 window.addEventListener('price-updated', handlePriceUpdate);
                 window.addEventListener('price-data-saved', handlePriceUpdate);
                 window.addEventListener('global-data-updated', handlePriceUpdate);
+                window.addEventListener('coffee-price-updated', handlePriceUpdate);
                 
                 // 监听存储事件，以便在同一设备的不同标签页之间同步
                 window.addEventListener('storage', function(event) {
@@ -806,6 +804,7 @@
                     window.removeEventListener('price-updated', handlePriceUpdate);
                     window.removeEventListener('price-data-saved', handlePriceUpdate);
                     window.removeEventListener('global-data-updated', handlePriceUpdate);
+                    window.removeEventListener('coffee-price-updated', handlePriceUpdate);
                     window.removeEventListener('storage', arguments.callee);
                 };
             }
@@ -817,9 +816,14 @@
             const cleanup = setupPriceUpdateListeners();
             cleanupFunctions.push(cleanup);
             
-            // 初始化CoffeePriceData系统
+            // 初始化统一价格同步系统
+            // 为了兼容性保留旧系统初始化
             if (window.CoffeePriceData && typeof window.CoffeePriceData.initPriceSystem === 'function') {
-                window.CoffeePriceData.initPriceSystem();
+                try {
+                    window.CoffeePriceData.initPriceSystem();
+                } catch (e) {
+                    console.warn('初始化旧系统失败:', e);
+                }
             }
              
             // 初始加载价格数据
@@ -836,46 +840,83 @@
             
             // 页面加载后立即再次检查URL参数（确保不遗漏）
             setTimeout(() => {
-                const urlParams = new URLSearchParams(window.location.search);
-                const priceDataStr = urlParams.get('price_data');
-                if (priceDataStr) {
-                    console.log('延迟检查：发现URL参数中有数据');
-                    try {
-                        const decoded = decodeURIComponent(priceDataStr);
-                        const urlData = JSON.parse(decoded);
-                        if (urlData && urlData.date && urlData.price) {
-                            // 确保URL数据有时间戳（如果没有，使用当前时间）
-                            if (!urlData.timestamp) {
-                                urlData.timestamp = Date.now();
-                                console.log('延迟检查：为URL数据添加时间戳:', urlData.timestamp);
-                            }
-                            
-                            if (window.CoffeePriceData && window.CoffeePriceData.savePriceData) {
-                                const saved = window.CoffeePriceData.savePriceData(urlData);
-                                if (saved) {
-                                    console.log('延迟保存URL数据成功');
-                                    // 保存后立即刷新显示
-                                    setTimeout(() => {
-                                        refreshPriceData();
-                                        // 延迟清除URL参数，确保数据已保存和显示
-                                        setTimeout(() => {
-                                            window.history.replaceState({}, document.title, window.location.pathname);
-                                            console.log('延迟检查：URL参数已清除');
-                                        }, 300);
-                                    }, 100);
-                                } else {
-                                    console.log('延迟检查：URL数据未保存（可能本地数据更新）');
+                // 使用统一同步系统处理URL参数
+                if (window.UnifiedCoffeePriceSync && typeof window.UnifiedCoffeePriceSync.readFromURL === 'function') {
+                    const urlData = window.UnifiedCoffeePriceSync.readFromURL();
+                    if (urlData) {
+                        console.log('延迟检查：发现URL参数中有数据');
+                        // 确保URL数据有时间戳（如果没有，使用当前时间）
+                        if (!urlData.timestamp) {
+                            urlData.timestamp = Date.now();
+                            console.log('延迟检查：为URL数据添加时间戳:', urlData.timestamp);
+                        }
+                        
+                        if (window.UnifiedCoffeePriceSync.savePriceData) {
+                            const saved = window.UnifiedCoffeePriceSync.savePriceData(urlData);
+                            if (saved) {
+                                console.log('延迟保存URL数据成功');
+                                // 保存后立即刷新显示
+                                setTimeout(() => {
                                     refreshPriceData();
-                                }
+                                    // 延迟清除URL参数，确保数据已保存和显示
+                                    setTimeout(() => {
+                                        window.history.replaceState({}, document.title, window.location.pathname);
+                                        console.log('延迟检查：URL参数已清除');
+                                    }, 300);
+                                }, 100);
+                            } else {
+                                console.log('延迟检查：URL数据未保存（可能本地数据更新）');
+                                refreshPriceData();
                             }
                         }
-                    } catch (e) {
-                        console.error('延迟处理URL数据失败:', e);
+                    } else {
+                        // 即使没有URL参数，也刷新一次数据，确保显示最新
+                        console.log('延迟检查：没有URL参数，刷新本地数据');
+                        refreshPriceData();
                     }
                 } else {
-                    // 即使没有URL参数，也刷新一次数据，确保显示最新
-                    console.log('延迟检查：没有URL参数，刷新本地数据');
-                    refreshPriceData();
+                    // 回退到旧方法处理URL参数
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const priceDataStr = urlParams.get('price_data');
+                    if (priceDataStr) {
+                        console.log('延迟检查：发现URL参数中有数据（使用旧方法）');
+                        try {
+                            const decoded = decodeURIComponent(priceDataStr);
+                            const urlData = JSON.parse(decoded);
+                            if (urlData && urlData.date && urlData.price) {
+                                // 确保URL数据有时间戳（如果没有，使用当前时间）
+                                if (!urlData.timestamp) {
+                                    urlData.timestamp = Date.now();
+                                    console.log('延迟检查：为URL数据添加时间戳:', urlData.timestamp);
+                                }
+                                
+                                if (window.CoffeePriceData && window.CoffeePriceData.savePriceData) {
+                                    const saved = window.CoffeePriceData.savePriceData(urlData);
+                                    if (saved) {
+                                        console.log('延迟保存URL数据成功');
+                                        // 保存后立即刷新显示
+                                        setTimeout(() => {
+                                            refreshPriceData();
+                                            // 延迟清除URL参数，确保数据已保存和显示
+                                            setTimeout(() => {
+                                                window.history.replaceState({}, document.title, window.location.pathname);
+                                                console.log('延迟检查：URL参数已清除');
+                                            }, 300);
+                                        }, 100);
+                                    } else {
+                                        console.log('延迟检查：URL数据未保存（可能本地数据更新）');
+                                        refreshPriceData();
+                                    }
+                                }
+                            }
+                        } catch (e) {
+                            console.error('延迟处理URL数据失败:', e);
+                        }
+                    } else {
+                        // 即使没有URL参数，也刷新一次数据，确保显示最新
+                        console.log('延迟检查：没有URL参数，刷新本地数据');
+                        refreshPriceData();
+                    }
                 }
             }, 500);
             

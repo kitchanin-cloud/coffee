@@ -12,6 +12,7 @@
     <script src="./test_price_data_clean.js"></script>
     <script src="./test_price_sync_clean.js"></script>
     <script src="./price_sync_enhanced.js"></script>
+    <script src="./js/unified_sync_system.js"></script>
     
     <title>咖啡价格管理</title>
     <style>
@@ -456,26 +457,13 @@
             const saveData = async () => {
                 try {
                     console.log('开始保存价格数据...');
-                    console.log('PriceSyncAPI available:', !!window.PriceSyncAPI);
-                    console.log('CoffeePriceData available:', !!window.CoffeePriceData);
-                    console.log('CoffeePriceData.savePriceData available:', !!(window.CoffeePriceData && window.CoffeePriceData.savePriceData));
+                    console.log('UnifiedCoffeePriceSync available:', !!window.UnifiedCoffeePriceSync);
                     
                     let saveResult = false;
                     
-                    // 优先使用CoffeePriceData直接保存
-                    if (window.CoffeePriceData && typeof window.CoffeePriceData.save === 'function') {
-                        console.log('使用CoffeePriceData.save保存数据...');
-                        
-                        // 确保数据系统已初始化（双重检查）
-                        if (window.CoffeePriceData.initialize && typeof window.CoffeePriceData.initialize === 'function') {
-                            console.log('保存前再次确保数据系统已初始化...');
-                            try {
-                                const initResult = window.CoffeePriceData.initialize();
-                                console.log('保存前初始化结果:', initResult);
-                            } catch (initError) {
-                                console.error('保存前初始化失败:', initError);
-                            }
-                        }
+                    // 使用新的统一同步系统保存数据
+                    if (window.UnifiedCoffeePriceSync && typeof window.UnifiedCoffeePriceSync.savePriceData === 'function') {
+                        console.log('使用UnifiedCoffeePriceSync.savePriceData保存数据...');
                         
                         // 检查localStorage是否可用
                         if (typeof localStorage === 'undefined') {
@@ -486,7 +474,7 @@
                         
                         // 尝试保存
                         try {
-                            saveResult = window.CoffeePriceData.savePriceData(newPriceData);
+                            saveResult = window.UnifiedCoffeePriceSync.savePriceData(newPriceData);
                             console.log('保存结果:', saveResult);
                         } catch (saveError) {
                             console.error('保存时抛出异常:', saveError);
@@ -498,7 +486,7 @@
                         if (!saveResult) {
                             console.error('保存失败，检查localStorage...');
                             try {
-                                const stored = localStorage.getItem('coffee_price_data_v3');
+                                const stored = localStorage.getItem('coffee_prices_unified');
                                 console.log('localStorage中的数据:', stored ? '存在' : '不存在');
                                 if (stored) {
                                     const parsed = JSON.parse(stored);
@@ -511,17 +499,9 @@
                                 console.error('读取localStorage失败:', e);
                             }
                         }
-                    } else if (window.PriceSyncAPI && typeof window.PriceSyncAPI.saveAndSyncPriceData === 'function') {
-                        console.log('使用PriceSyncAPI.saveAndSyncPriceData保存数据...');
-                        saveResult = await window.PriceSyncAPI.saveAndSyncPriceData(newPriceData);
-                        console.log('保存结果:', saveResult);
-                    } else if (typeof window.savePriceData === 'function') {
-                        console.log('使用window.savePriceData保存数据...');
-                        saveResult = window.savePriceData(newPriceData);
-                        console.log('保存结果:', saveResult);
                     } else {
-                        console.error('所有数据保存函数都不可用');
-                        throw new Error('数据保存函数不可用');
+                        console.error('统一数据保存函数不可用');
+                        throw new Error('统一数据保存函数不可用');
                     }
                     
                     // 无论保存是否成功，都执行以下操作
@@ -530,10 +510,10 @@
                     if (saveResult) {
                         console.log('价格数据保存成功，开始多方式同步...');
                         
-                        // 使用增强版同步系统进行多方式同步
-                        if (window.PriceSyncEnhanced && typeof window.PriceSyncEnhanced.sync === 'function') {
+                        // 使用统一同步系统进行多方式同步
+                        if (window.UnifiedCoffeePriceSync && typeof window.UnifiedCoffeePriceSync.syncData === 'function') {
                             try {
-                                const syncResults = window.PriceSyncEnhanced.sync(newPriceData);
+                                const syncResults = window.UnifiedCoffeePriceSync.syncData(newPriceData);
                                 console.log('多方式同步结果:', syncResults);
                             } catch (syncError) {
                                 console.error('同步失败:', syncError);
@@ -633,7 +613,12 @@
             document.addEventListener('DOMContentLoaded', () => {
                 console.log('price.html - 初始化数据同步系统');
                 
-                // 初始化PriceSyncAPI（如果尚未初始化）
+                // 初始化统一价格同步系统
+                if (window.UnifiedCoffeePriceSync) {
+                    console.log('price.html - 统一价格同步系统已加载');
+                }
+                
+                // 为了兼容性保留旧系统初始化
                 if (window.PriceSyncAPI && typeof window.PriceSyncAPI.init === 'function') {
                     try {
                         window.PriceSyncAPI.init();
@@ -643,7 +628,19 @@
                     }
                 }
                 
-                // 页面加载时检查URL哈希中的数据
+                // 页面加载时检查URL参数中的数据
+                if (window.UnifiedCoffeePriceSync && typeof window.UnifiedCoffeePriceSync.readFromURL === 'function') {
+                    const urlData = window.UnifiedCoffeePriceSync.readFromURL();
+                    if (urlData) {
+                        console.log('从URL参数读取到数据:', urlData);
+                        // 保存URL数据
+                        if (window.UnifiedCoffeePriceSync.savePriceData(urlData)) {
+                            console.log('URL数据保存成功');
+                        }
+                    }
+                }
+                
+                // 为了兼容性保留旧系统
                 if (window.PriceSyncAPI && typeof window.PriceSyncAPI.parseDataFromUrlHash === 'function') {
                     const hasSyncedFromHash = window.PriceSyncAPI.parseDataFromUrlHash();
                     if (hasSyncedFromHash) {
