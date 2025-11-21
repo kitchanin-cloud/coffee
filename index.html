@@ -9,7 +9,6 @@
     <meta http-equiv="Expires" content="0">
     
     <!-- 引入全新的数据管理和同步系统 -->
-    <script src="./price_sync_enhanced.js"></script>
     <script src="./js/unified_sync_system.js"></script>
     
     <title>咖啡豆价格 - Coffee Bean Price</title>
@@ -650,20 +649,7 @@
                 }, 200);
             }
             
-            // 设置增强版同步监听器（实时接收更新）
-            if (window.PriceSyncEnhanced && typeof window.PriceSyncEnhanced.setupListeners === 'function') {
-                console.log('设置增强版同步监听器...');
-                window.PriceSyncEnhanced.setupListeners(function(updatedData) {
-                    console.log('收到实时数据更新:', updatedData);
-                    // 如果收到新数据，立即保存并刷新显示
-                    if (updatedData && updatedData.date && updatedData.price) {
-                        if (window.UnifiedCoffeePriceSync && window.UnifiedCoffeePriceSync.savePriceData) {
-                            window.UnifiedCoffeePriceSync.savePriceData(updatedData);
-                        }
-                        refreshPriceData();
-                    }
-                });
-            }
+            
             
             // 刷新价格数据的函数 - 使用统一数据同步系统
             function refreshPriceData() {

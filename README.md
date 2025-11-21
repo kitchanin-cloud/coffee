@@ -15,7 +15,6 @@ coffee-main/
 ├── price.html           # 价格管理页面
 ├── js/                  # JavaScript模块目录
 │   ├── unified_sync_system.js  # 统一数据同步系统
-├── price_sync_enhanced.js      # 增强版价格数据同步系统
 ├── images/              # 图片资源目录
 │   ├── flagThailand.png
 │   ├── flagChina.png
