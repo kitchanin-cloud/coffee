@@ -128,7 +128,12 @@ const UnifiedCoffeePriceSync = (function() {
     // 清空所有数据
     function clearAllData() {
         try {
-            localStorage.removeItem(STORAGE_KEY);
+            // 清除所有可能的localStorage键
+            localStorage.removeItem(STORAGE_KEY); // coffee_price_data_v5_unified
+            localStorage.removeItem('coffee_price_data_v4');
+            localStorage.removeItem('coffee_price_data_v3');
+            localStorage.removeItem('coffee_price_data_v2');
+            localStorage.removeItem('coffee_price_data');
             
             // 广播清空通知
             if (broadcastChannel) {
