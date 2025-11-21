@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LocalStorage Debug</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+        }
+        pre {
+            background-color: #f8f8f8;
+            border: 1px solid #ddd;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 0;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .section {
+            margin-bottom: 30px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>LocalStorage 数据检查工具</h1>
+        
+        <div class="section">
+            <button onclick="checkLocalStorage()">检查 LocalStorage</button>
+            <button onclick="clearCoffeeData()">清除咖啡数据</button>
+            <pre id="output">点击按钮查看数据</pre>
+        </div>
+    </div>
+
+    <script>
+        function checkLocalStorage() {
+            const output = document.getElementById('output');
+            let result = "=== LocalStorage 中的咖啡相关数据 ===\n\n";
+            
+            try {
+                // 获取所有键值对
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    if (key && (key.includes('coffee') || key.includes('price'))) {
+                        const value = localStorage.getItem(key);
+                        result += `键: ${key}\n`;
+                        result += `值: ${value}\n`;
+                        
+                        // 尝试解析JSON
+                        try {
+                            const parsed = JSON.parse(value);
+                            result += `解析后的值: ${JSON.stringify(parsed, null, 2)}\n`;
+                        } catch (e) {
+                            result += `无法解析为JSON: ${e.message}\n`;
+                        }
+                        
+                        result += "---\n";
+                    }
+                }
+                
+                if (result === "=== LocalStorage 中的咖啡相关数据 ===\n\n") {
+                    result += "未找到任何与咖啡或价格相关的数据";
+                }
+            } catch (error) {
+                result += `检查LocalStorage时出错: ${error.message}\n`;
+            }
+            
+            output.textContent = result;
+        }
+        
+        function clearCoffeeData() {
+            const output = document.getElementById('output');
+            let clearedKeys = [];
+            
+            try {
+                // 获取所有键值对
+                for (let i = localStorage.length - 1; i >= 0; i--) {
+                    const key = localStorage.key(i);
+                    if (key && (key.includes('coffee') || key.includes('price'))) {
+                        localStorage.removeItem(key);
+                        clearedKeys.push(key);
+                    }
+                }
+                
+                if (clearedKeys.length > 0) {
+                    output.textContent = `已清除以下键:\n${clearedKeys.join('\n')}`;
+                } else {
+                    output.textContent = "未找到需要清除的咖啡相关数据";
+                }
+            } catch (error) {
+                output.textContent = `清除数据时出错: ${error.message}`;
+            }
+        }
+        
+        // 页面加载时自动检查
+        window.addEventListener('DOMContentLoaded', checkLocalStorage);
+    </script>
+</body>
+</html>

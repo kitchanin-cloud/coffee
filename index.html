@@ -330,7 +330,7 @@
                     <span class="price-lang-th">ราคา วันนี้</span>
                     <span class="price-lang-zh">今日价格</span>
                 </div>
-                <span class="price-value" id="current-price">¥58723 / ตัน (吨)</span>
+                <span class="price-value" id="current-price">¥-- / ตัน (吨)</span>
             </div>
             <div class="buttons">
                 <button onclick="window.location.href='history.html'">
@@ -722,12 +722,12 @@
                     } else {
                         console.warn('No price data available, using default');
                         // 如果没有数据，使用默认价格
-                        currentPriceElement.textContent = '¥58723 / ตัน (吨)';
+                        currentPriceElement.textContent = '¥-- / ตัน (吨)';
                     }
                 } catch (error) {
                     console.error('Error updating current price:', error);
                     // 出错时显示默认价格
-                    currentPriceElement.textContent = '¥58723 / ตัน (吨)';
+                    currentPriceElement.textContent = '¥-- / ตัน (吨)';
                 }
             }
             
