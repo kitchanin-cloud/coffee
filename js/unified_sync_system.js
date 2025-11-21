@@ -5,7 +5,7 @@
 const UnifiedCoffeePriceSync = (function() {
     // 使用全新的存储键名，避免与旧数据冲突
     const STORAGE_KEY = 'coffee_price_data_v5_unified';
-    const CHANNEL_NAME = 'coffee_price_sync';  // 与price_sync_enhanced.js保持一致
+    const CHANNEL_NAME = 'coffee_price_sync';  // 用于跨标签页/窗口数据同步
     const DEVICE_ID_KEY = 'coffee_device_id_v5';
     
     let broadcastChannel = null;
@@ -67,14 +67,6 @@ const UnifiedCoffeePriceSync = (function() {
             // 保存统一格式数据
             localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
             
-            // 同时保存增强版兼容格式数据
-            const enhancedFormat = {
-                type: 'price-update',
-                data: payload,
-                timestamp: Date.now()
-            };
-            localStorage.setItem('coffee_price_sync', JSON.stringify(enhancedFormat));
-            
             // 广播通知其他设备
             broadcastData(payload);
             
@@ -89,24 +81,13 @@ const UnifiedCoffeePriceSync = (function() {
     // 获取价格数据
     function getPriceData() {
         try {
-            // 首先尝试从统一存储键加载
+            // 从统一存储键加载
             let dataStr = localStorage.getItem(STORAGE_KEY);
-            
-            // 如果统一存储键没有数据，尝试从增强版存储键加载
-            if (!dataStr) {
-                dataStr = localStorage.getItem('coffee_price_sync');
-            }
             
             if (dataStr) {
                 const parsedData = JSON.parse(dataStr);
-                // 处理增强版格式的数据
-                let data = parsedData;
-                if (parsedData && parsedData.data) {
-                    data = parsedData.data;
-                }
-                
-                console.log('从localStorage加载价格数据:', data);
-                return data;
+                console.log('从localStorage加载价格数据:', parsedData);
+                return parsedData;
             }
             return null;
         } catch (error) {
@@ -127,20 +108,8 @@ const UnifiedCoffeePriceSync = (function() {
                     timestamp: Date.now()
                 };
                 
-                // 发送增强版兼容格式消息
-                const enhancedMessage = {
-                    type: 'price-update',
-                    senderId: getDeviceId(),
-                    data: data,
-                    timestamp: Date.now()
-                };
-                
                 broadcastChannel.postMessage(unifiedMessage);
                 console.log('广播统一格式数据:', unifiedMessage);
-                
-                // 同时发送增强版兼容格式
-                broadcastChannel.postMessage(enhancedMessage);
-                console.log('广播增强版兼容格式数据:', enhancedMessage);
             } catch (error) {
                 console.warn('广播数据失败:', error);
             }
@@ -163,21 +132,16 @@ const UnifiedCoffeePriceSync = (function() {
     
     // 处理存储变化事件
     function handleStorageChange(event) {
-        // 检查统一存储键或增强版存储键
-        if (event.key === STORAGE_KEY || event.key === 'coffee_price_sync') {
+        // 检查统一存储键
+        if (event.key === STORAGE_KEY) {
             try {
                 const data = event.newValue ? JSON.parse(event.newValue) : null;
-                // 提取实际数据（处理增强版同步系统的包装格式）
-                let actualData = data;
-                if (data && data.data) {
-                    actualData = data.data;
-                }
                 
-                // 触发自定义事件通知页面数据已更新（移除了设备ID检查）
+                // 触发自定义事件通知页面数据已更新
                 window.dispatchEvent(new CustomEvent('unifiedCoffeePriceDataUpdated', {
-                    detail: actualData
+                    detail: data
                 }));
-                console.log('检测到存储数据变化:', actualData);
+                console.log('检测到存储数据变化:', data);
             } catch (error) {
                 console.error('处理存储变化失败:', error);
             }
@@ -193,6 +157,7 @@ const UnifiedCoffeePriceSync = (function() {
             localStorage.removeItem('coffee_price_data_v3');
             localStorage.removeItem('coffee_price_data_v2');
             localStorage.removeItem('coffee_price_data');
+            localStorage.removeItem('coffee_price_sync'); // 旧版系统使用的键名
             
             // 广播清空通知
             if (broadcastChannel) {
