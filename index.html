@@ -555,6 +555,17 @@
             
             // ===== 立即检查URL参数中的新数据（最高优先级） =====
             console.log('检查URL参数中的新数据...');
+            
+            // 确保数据系统已初始化
+            if (window.CoffeePriceData && typeof window.CoffeePriceData.initialize === 'function') {
+                try {
+                    window.CoffeePriceData.initialize();
+                    console.log('数据系统已初始化');
+                } catch (initError) {
+                    console.error('初始化数据系统失败:', initError);
+                }
+            }
+            
             const urlParams = new URLSearchParams(window.location.search);
             const priceDataStr = urlParams.get('price_data');
             const forceRefresh = urlParams.get('force_refresh');
@@ -587,6 +598,12 @@
                                     refreshPriceData();
                                 }, 200);
                             }
+                        } else {
+                            console.error('CoffeePriceData.savePriceData不可用');
+                            // 即使保存函数不可用，也尝试刷新
+                            setTimeout(() => {
+                                refreshPriceData();
+                            }, 200);
                         }
                     }
                 } catch (e) {

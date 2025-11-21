@@ -549,13 +549,18 @@
         try {
             console.log('从3.0数据管理系统获取价格数据...');
             
-            // 优先使用统一的数据管理系统
+            // 优先使用统一的数据管理系统（getData已经做了去重处理）
             if (window.CoffeePriceData && typeof window.CoffeePriceData.getData === 'function') {
                 const allPriceData = window.CoffeePriceData.getData();
                 console.log('从CoffeePriceData获取到数据，记录数:', allPriceData.length);
 
                 if (Array.isArray(allPriceData) && allPriceData.length > 0) {
-                    return allPriceData.sort((a, b) => new Date(b.date) - new Date(a.date));
+                    // getData已经做了去重，直接返回并按日期排序
+                    return allPriceData.sort((a, b) => {
+                        if (!a || !a.date) return 1;
+                        if (!b || !b.date) return -1;
+                        return new Date(b.date) - new Date(a.date);
+                    });
                 }
             }
 
@@ -627,8 +632,8 @@
 
                 if (pageData && pageData.length > 0) {
                     pageData.forEach(record => {
-                        // 使用添加时间作为日期显示
-                        const displayDate = record.addTime ? record.addTime.split(' ')[0] : record.date;
+                        // 直接使用date字段作为日期显示（已通过getPriceData去重，每个日期只有一条最新记录）
+                        const displayDate = record.date || (record.addTime ? record.addTime.split(' ')[0] : '');
                         const row = document.createElement('tr');
                         row.innerHTML = `
                             <td>${displayDate}</td>
@@ -734,6 +739,17 @@
 
             // ===== 立即检查URL参数中的新数据 =====
             console.log('检查URL参数中的新数据...');
+            
+            // 确保数据系统已初始化
+            if (window.CoffeePriceData && typeof window.CoffeePriceData.initialize === 'function') {
+                try {
+                    window.CoffeePriceData.initialize();
+                    console.log('数据系统已初始化');
+                } catch (initError) {
+                    console.error('初始化数据系统失败:', initError);
+                }
+            }
+            
             const urlParams = new URLSearchParams(window.location.search);
             const priceDataStr = urlParams.get('price_data');
             const forceRefresh = urlParams.get('force_refresh');
@@ -766,6 +782,12 @@
                                     renderPage(currentPage);
                                 }, 200);
                             }
+                        } else {
+                            console.error('CoffeePriceData.savePriceData不可用');
+                            // 即使保存函数不可用，也尝试刷新
+                            setTimeout(() => {
+                                renderPage(currentPage);
+                            }, 200);
                         }
                     }
                 } catch (e) {

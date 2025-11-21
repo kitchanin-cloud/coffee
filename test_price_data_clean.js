@@ -210,13 +210,28 @@ function savePriceData(newPriceData) {
       priceDataStore.data = [];
     }
     
-    // 添加新数据（不检查重复，允许同一天有多个记录）
-    console.log(`添加新数据: ${newPriceData.date}`);
-    priceDataStore.data.push({
+    // 检查是否已存在同一天的数据
+    const existingIndex = priceDataStore.data.findIndex(item => 
+      item && item.date === newPriceData.date
+    );
+    
+    const now = Date.now();
+    const newDataWithTimestamp = {
       ...newPriceData,
-      timestamp: Date.now()
-    });
-    console.log(`数据已添加，当前数据总数: ${priceDataStore.data.length}`);
+      timestamp: now
+    };
+    
+    if (existingIndex >= 0) {
+      // 如果已存在同一天的数据，更新它（保留最新的）
+      console.log(`更新${newPriceData.date}的数据，索引: ${existingIndex}`);
+      priceDataStore.data[existingIndex] = newDataWithTimestamp;
+      console.log(`数据已更新，当前数据总数: ${priceDataStore.data.length}`);
+    } else {
+      // 如果不存在，添加新数据
+      console.log(`添加新数据: ${newPriceData.date}`);
+      priceDataStore.data.push(newDataWithTimestamp);
+      console.log(`数据已添加，当前数据总数: ${priceDataStore.data.length}`);
+    }
     
     // 按时间戳降序排序（最新的在前）
     priceDataStore.data.sort((a, b) => {
@@ -243,6 +258,30 @@ function savePriceData(newPriceData) {
       console.log('最新数据:', priceDataStore.data[0]);
       // 添加调试信息
       console.log('完整的priceDataStore:', JSON.stringify(priceDataStore, null, 2));
+      
+      // 触发数据更新事件，通知所有页面
+      try {
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('price-data-saved', {
+            detail: {
+              data: newDataWithTimestamp,
+              timestamp: now
+            }
+          }));
+          
+          window.dispatchEvent(new CustomEvent('global-data-updated', {
+            detail: {
+              timestamp: now,
+              syncId: priceDataStore.syncId || generateSyncId()
+            }
+          }));
+          
+          console.log('已触发数据更新事件');
+        }
+      } catch (eventError) {
+        console.error('触发事件失败:', eventError);
+      }
+      
       return true;
     } else {
       console.error('=== 价格数据保存失败 ===');
